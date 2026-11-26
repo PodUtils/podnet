@@ -10,10 +10,14 @@ use podnet::exit::{Fault, ResultExt};
 use podnet::ingress::{ForwardTarget, Ingress, IngressRule, OriginOptions, Service};
 
 use crate::cli::cmd::run::run_tunnel;
+use crate::cli::cmd::tunnel_inspect::{self, TunnelAction};
 use crate::cli::opts::{Show, TunnelOpts};
 
 #[derive(Args, Debug)]
+#[command(args_conflicts_with_subcommands = true)]
 pub(crate) struct TunnelArgs {
+    #[command(subcommand)]
+    pub(crate) action: Option<TunnelAction>,
     #[command(flatten)]
     pub(crate) common: TunnelOpts,
     /// HTTP or HTTPS origin.
@@ -113,9 +117,30 @@ pub(crate) struct TunnelArgs {
     /// command prints that warning.
     #[arg(long)]
     pub(crate) compat_destination: bool,
-    /// Print the hop knowledge table and the exchange as a hop sees it.
+    /// Print the hop knowledge table of --e2e and the exchange as a hop
+    /// sees it.
     #[arg(long)]
-    pub(crate) inspect: bool,
+    pub(crate) e2e_inspect: bool,
+    /// Keep the last HTTP exchanges of the origin in memory (off by
+    /// default): the method, the target, the status, the heads with each
+    /// secret value redacted, and the bodies up to --inspect-body. podnet
+    /// tunnel inspect list, show and replay read them over a unix socket
+    /// of mode 0600.
+    #[arg(long)]
+    inspect: bool,
+    /// With --inspect: the count of exchanges in the ring (default 100).
+    /// A full ring drops the oldest.
+    #[arg(long, value_name = "N", requires = "inspect", value_parser = clap::value_parser!(u64).range(1..=10_000))]
+    inspect_keep: Option<u64>,
+    /// With --inspect: the bytes of each body that the ring keeps (default
+    /// 65536, at most 16777216). The rest is counted, not kept.
+    #[arg(long, value_name = "BYTES", requires = "inspect", value_parser = clap::value_parser!(u64).range(1..=16_777_216))]
+    inspect_body: Option<u64>,
+    /// With --inspect: keep the values of Authorization, Cookie and each
+    /// header or query parameter that names a token or a key. podnet
+    /// prints a warning.
+    #[arg(long, requires = "inspect")]
+    inspect_raw: bool,
     /// A token of one relay and one service (LEARN-2). It is refused by
     /// another relay or another service.
     #[arg(long, value_name = "TOKEN", hide_env_values = true)]
@@ -146,7 +171,10 @@ fn origin_flags(args: &TunnelArgs) -> Vec<&'static str> {
 }
 
 pub(crate) async fn tunnel(args: TunnelArgs) -> Result<()> {
-    if args.e2e || args.inspect {
+    if let Some(TunnelAction::Inspect { command }) = &args.action {
+        return tunnel_inspect::run(command, args.common.json).await;
+    }
+    if args.e2e || args.e2e_inspect {
         return super::e2e::tunnel_e2e(&args).await;
     }
     let given = origin_flags(&args);
@@ -217,10 +245,16 @@ pub(crate) async fn tunnel(args: TunnelArgs) -> Result<()> {
             });
         }
         if ingress.is_empty() {
+            // T-244: --inspect was the hop table of --e2e before.
+            let hint = if args.inspect {
+                "; the hop table of --e2e is --e2e-inspect"
+            } else {
+                ""
+            };
             return Err(podnet::exit::fault(
                 Fault::Usage,
                 anyhow::anyhow!(
-                    "choose an origin (--url, --unix, --port, --tcp, --hello-world) or --forward"
+                    "choose an origin (--url, --unix, --port, --tcp, --hello-world) or --forward{hint}"
                 ),
             ));
         }
@@ -250,6 +284,18 @@ pub(crate) async fn tunnel(args: TunnelArgs) -> Result<()> {
     if args.common.check {
         return preflight(&config, args.common.show()).await;
     }
+    // The socket of the inspector lives as long as the tunnel.
+    let _inspector = match args.inspect {
+        true => Some(tunnel_inspect::start(
+            &tunnel_inspect::Flags {
+                keep: args.inspect_keep.map(|n| n as usize),
+                body: args.inspect_body.map(|n| n as usize),
+                raw: args.inspect_raw,
+            },
+            &config,
+        )?),
+        false => None,
+    };
     run_tunnel(config, args.common.show(), args.common.run_for, vec![]).await
 }
 

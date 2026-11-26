@@ -1,6 +1,6 @@
 # The session end to end
 
-This page describes `podnet tunnel --e2e` and `podnet tunnel --inspect`
+This page describes `podnet tunnel --e2e` and `podnet tunnel --e2e-inspect`
 (GitHub #496). The session runs a Noise XX handshake inside the carrier
 before any application byte. The relay forwards the two streams and cannot
 open the handshake, the destination or a record.
@@ -88,7 +88,7 @@ the next one with the new key.
 
 ## What each hop learns
 
-`podnet tunnel --inspect` prints this table:
+`podnet tunnel --e2e-inspect` prints this table:
 
 | Hop | Client address | Relay pair | Volume | Destination | Service | Peer identity |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -105,7 +105,7 @@ because it dials the destination.
 ## Inspect
 
 ```sh
-podnet tunnel --inspect --pair relay-a/pair-1 \
+podnet tunnel --e2e-inspect --pair relay-a/pair-1 \
   --destination db.internal:5432 --service postgres \
   --peer 91ab...7d
 ```
@@ -120,11 +120,15 @@ tunnel --inspect, relay:
   wire: 45 bytes, sha256 ...
 ```
 
+The crate `pod-e2e` writes the heading of the relay view, and it keeps the
+old flag name `tunnel --inspect`. Since T-244, `tunnel --inspect` starts the
+inspector of the HTTP exchanges ([tunnels](tunnels.md#the-inspector)).
+
 The relay view holds the prelude identifier, the prelude size and digest,
 and the size and digest of the first record. It holds no destination, no
 service name and no key.
 
-Without `--pair` and `--destination`, `--inspect` uses `relay/pair` and
+Without `--pair` and `--destination`, `--e2e-inspect` uses `relay/pair` and
 `example.invalid:0`, so the table renders without an end to connect.
 
 ## The compatibility path

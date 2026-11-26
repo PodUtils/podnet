@@ -220,7 +220,11 @@ COMMANDS
 podnet tunnel
   Expose a service (cloudflared-style).
 
-  Usage: podnet tunnel [OPTIONS]
+  Usage: podnet tunnel COMMAND [OPTIONS]
+
+  Commands:
+    inspect  Read the exchanges that a tunnel with --inspect keeps in memory,
+             over its unix socket (mode 0600, the user of the tunnel only)
 
   Options:
     --detach
@@ -378,8 +382,24 @@ podnet tunnel
         The compatibility path: the destination in clear on the control stream,
         as /connect/HOST/PORT. It leaks the destination, and the command prints
         that warning.
+    --e2e-inspect
+        Print the hop knowledge table of --e2e and the exchange as a hop sees
+        it.
     --inspect
-        Print the hop knowledge table and the exchange as a hop sees it.
+        Keep the last HTTP exchanges of the origin in memory (off by default):
+        the method, the target, the status, the heads with each secret value
+        redacted, and the bodies up to --inspect-body. podnet tunnel inspect
+        list, show and replay read them over a unix socket of mode 0600.
+    --inspect-keep N
+        With --inspect: the count of exchanges in the ring (default 100). A
+        full ring drops the oldest.
+    --inspect-body BYTES
+        With --inspect: the bytes of each body that the ring keeps (default
+        65536, at most 16777216). The rest is counted, not kept.
+    --inspect-raw
+        With --inspect: keep the values of Authorization, Cookie and each
+        header or query parameter that names a token or a key. podnet prints a
+        warning.
     --e2e-token TOKEN
         A token of one relay and one service (LEARN-2). It is refused by
         another relay or another service.
@@ -438,6 +458,12 @@ podnet tunnel
 
     --auth-password-file needs --auth-user.
 
+    --inspect-keep needs --inspect.
+
+    --inspect-body needs --inspect.
+
+    --inspect-raw needs --inspect.
+
   Examples:
     A quick tunnel in the background: one JSON document with the URL, then exit
     0.
@@ -463,6 +489,539 @@ podnet tunnel
 
     Carry a raw stream through the quick tunnel.
         $ podnet tunnel --forward unix:/run/app.sock
+
+podnet tunnel inspect
+  Read the exchanges that a tunnel with --inspect keeps in memory, over its
+  unix socket (mode 0600, the user of the tunnel only).
+
+  Usage: podnet tunnel inspect COMMAND [OPTIONS]
+
+  Commands:
+    list    List the exchanges in the ring, the oldest first: the id, the
+            method, the target, the status and the state
+    show    Show one exchange: the heads and the bodies (each secret value is
+            [redacted]; a body keeps the cap of tunnel --inspect-body)
+    replay  Send the request of one exchange to its origin again. The ring gets
+            a new exchange that names the first. A redacted header or query
+            parameter is left out, and the output says so. An open or
+            incomplete exchange, a cut request body and a WebSocket are refused
+            (exit 65)
+
+  Options:
+    --service-url SERVICE_URL
+        Quick-tunnel provisioning endpoint. Default:
+        https://api.trycloudflare.com.
+    --user-agent USER_AGENT
+        User-Agent sent when provisioning.
+    --ha-connections HA_CONNECTIONS
+        Edge connections (1-8), for redundancy: when one is lost, the others
+        carry the visitors. The edge chooses the connection of each request,
+        and one request uses one connection, so more connections do not make
+        one transfer faster. Default: ha-connections of the file of tunnel
+        --config, else 2.
+    --protocol PROTOCOL
+        Edge protocol: quic (UDP 7844), http2 or h2 (TCP 7844), or auto (quic,
+        then http2). Default: protocol of the file of tunnel --config, else
+        auto. Values: auto, quic, http2, h2.
+    --transport TRANSPORT
+        How to reach the edge: auto (try 7844, fall back to WARP on 443),
+        direct (port 7844), warp (carried on TCP 443) or relay. relay is HTTP/2
+        in a WebSocket to the relay of --relay, on TCP 443. Default: auto.
+        Values: auto, direct, warp, relay.
+    --relay URL
+        The WebSocket-to-TCP relay of --transport relay: a URL, or a comma list
+        of hosts of one deployment. The variable PODNET_RELAY_TOKEN (not
+        PODNET_RELAY) gives a token; without it, podnet mints one. Default:
+        https://tcp.ssh.relay.ajam.dev. Variable: PODNET_RELAY.
+    --warp-identity PATH
+        Keep the WARP device and MASQUE key here and resume them next run.
+        Without it, every run registers a new anonymous device.
+    --masque-endpoint IP:PORT
+        The WARP MASQUE front door of `--transport warp`: IP:PORT, in place of
+        the doors of the device record. With no IPv4 route, the IPv6 door of
+        the record goes first.
+    --leg-failover LEG_FAILOVER
+        How the next edge leg starts: staggered (when the leg before has not
+        registered in 2 s, or at once when it fails) or serial (only after the
+        leg before failed). Default: staggered. Values: staggered, serial.
+        Variable: PODNET_LEG_FAILOVER.
+    --no-verify
+        Do not fetch the public URL to prove reachability. Origin TLS checks
+        stay on.
+    --qr
+        Print a QR code for the public URL.
+    --json
+        Print the state of the tunnel as JSON lines on stdout, in place of the
+        text lines. Each line is one object with the key "event": "ready" (url,
+        tunnel_id, locations, and pin for share) or "verified" (url).
+    --run-for RUN_FOR
+        Stay up for this many seconds instead of until Ctrl-C (it also ends the
+        verify of the public URL).
+    --auth-user USER
+        Each visitor must give this user (HTTP Basic), with the password of
+        --auth-password-file. A visitor with no right credential gets 401 and
+        reaches no origin; the origin does not get the header. For HTTP origins
+        and tunnel --forward (podnet connect --auth-user); not for tunnel
+        --tcp. Variable: PODNET_AUTH_USER.
+    --auth-password-file FILE
+        The file with the password of --auth-user on its first line (mode
+        0600). Variable: PODNET_AUTH_PASSWORD_FILE.
+    --check
+        Check the plan and stop: the flags, the config file, each origin, the
+        files and the directories, and the edge legs. The check of an origin is
+        a connection, and the TLS handshake for https, with no request. No
+        Cloudflare API call, no edge connection, no file is written. Exit 0
+        when each check passes, 1 when a check fails. With --json, one JSON
+        document. serve and git serve also check each --local (and --ssh)
+        listener: a TCP address is bound with no listen and closed at once.
+    --ca-file PATH
+        A file of TLS roots (PEM). podnet uses only these roots for each
+        connection that it opens as a client. Without it, podnet reads
+        SSL_CERT_FILE, else podnet-ca.pem beside the binary, the system bundle
+        and the compiled-in roots.
+    --proxy URL
+        The proxy for each connection: http://, socks5:// or socks5h://
+        [user:password@]host[:port]. A proxy on a unix socket:
+        socks5h+unix:/PATH (or socks5h://unix:/PATH). A proxy at the stdin and
+        stdout of a command, one for each connection (as ProxyCommand of SSH):
+        http+exec:COMMAND or socks5h+exec:COMMAND. Without it, podnet reads
+        HTTPS_PROXY and ALL_PROXY (no +exec: there). NO_PROXY names the targets
+        that do not use a proxy. PODNET_PROXY gives the same value, and keeps a
+        password out of the command line. Percent-encode / ? # @ : in the user
+        and the password. Variable: PODNET_PROXY.
+    --no-proxy
+        Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
+    --egress SPEC
+        The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
+        (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
+        chain (TOP over BELOW) are for podnet forward --network, podnet route
+        and podnet wg serve. With podnet link dial and podnet link connect,
+        each --egress is one element of the chain before the tcp carrier
+        (direct, a proxy, peer:FINGERPRINT/SERVICE). The elements are in order:
+        the last element reaches the carrier address. With podnet wg serve, one
+        --egress is the way of the flows of the peers (each spec of podnet
+        forward --network that carries TCP).
+    --resolve HOST=IP
+        Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
+        adds to it. TLS still checks the name of the certificate.
+    -q, --quiet
+        Log warnings and errors only.
+    -v, --verbose
+        Log more: -v for debug, -vv for trace. RUST_LOG takes priority.
+    --color COLOR
+        Colours in the log: auto (only on a terminal, and not with NO_COLOR),
+        always or never. Default: auto. Values: auto, always, never.
+    --log-format LOG_FORMAT
+        The form of the log on stderr: text, or json (one object for each
+        line). Default: text. Values: text, json.
+
+  Rules:
+    Give only one of --no-proxy, --proxy.
+
+    Give only one of --quiet, --verbose.
+
+    --auth-user needs --auth-password-file.
+
+    --auth-password-file needs --auth-user.
+
+podnet tunnel inspect list
+  List the exchanges in the ring, the oldest first: the id, the method, the
+  target, the status and the state.
+
+  Usage: podnet tunnel inspect list [OPTIONS]
+
+  Options:
+    --name INSTANCE
+        The instance name of the tunnel (--name, or the name of --detach; a
+        tunnel with no name is tunnel-HEX, in its log). Default: the one tunnel
+        with --inspect that runs.
+    --service-url SERVICE_URL
+        Quick-tunnel provisioning endpoint. Default:
+        https://api.trycloudflare.com.
+    --user-agent USER_AGENT
+        User-Agent sent when provisioning.
+    --ha-connections HA_CONNECTIONS
+        Edge connections (1-8), for redundancy: when one is lost, the others
+        carry the visitors. The edge chooses the connection of each request,
+        and one request uses one connection, so more connections do not make
+        one transfer faster. Default: ha-connections of the file of tunnel
+        --config, else 2.
+    --protocol PROTOCOL
+        Edge protocol: quic (UDP 7844), http2 or h2 (TCP 7844), or auto (quic,
+        then http2). Default: protocol of the file of tunnel --config, else
+        auto. Values: auto, quic, http2, h2.
+    --transport TRANSPORT
+        How to reach the edge: auto (try 7844, fall back to WARP on 443),
+        direct (port 7844), warp (carried on TCP 443) or relay. relay is HTTP/2
+        in a WebSocket to the relay of --relay, on TCP 443. Default: auto.
+        Values: auto, direct, warp, relay.
+    --relay URL
+        The WebSocket-to-TCP relay of --transport relay: a URL, or a comma list
+        of hosts of one deployment. The variable PODNET_RELAY_TOKEN (not
+        PODNET_RELAY) gives a token; without it, podnet mints one. Default:
+        https://tcp.ssh.relay.ajam.dev. Variable: PODNET_RELAY.
+    --warp-identity PATH
+        Keep the WARP device and MASQUE key here and resume them next run.
+        Without it, every run registers a new anonymous device.
+    --masque-endpoint IP:PORT
+        The WARP MASQUE front door of `--transport warp`: IP:PORT, in place of
+        the doors of the device record. With no IPv4 route, the IPv6 door of
+        the record goes first.
+    --leg-failover LEG_FAILOVER
+        How the next edge leg starts: staggered (when the leg before has not
+        registered in 2 s, or at once when it fails) or serial (only after the
+        leg before failed). Default: staggered. Values: staggered, serial.
+        Variable: PODNET_LEG_FAILOVER.
+    --no-verify
+        Do not fetch the public URL to prove reachability. Origin TLS checks
+        stay on.
+    --qr
+        Print a QR code for the public URL.
+    --json
+        Print the state of the tunnel as JSON lines on stdout, in place of the
+        text lines. Each line is one object with the key "event": "ready" (url,
+        tunnel_id, locations, and pin for share) or "verified" (url).
+    --run-for RUN_FOR
+        Stay up for this many seconds instead of until Ctrl-C (it also ends the
+        verify of the public URL).
+    --auth-user USER
+        Each visitor must give this user (HTTP Basic), with the password of
+        --auth-password-file. A visitor with no right credential gets 401 and
+        reaches no origin; the origin does not get the header. For HTTP origins
+        and tunnel --forward (podnet connect --auth-user); not for tunnel
+        --tcp. Variable: PODNET_AUTH_USER.
+    --auth-password-file FILE
+        The file with the password of --auth-user on its first line (mode
+        0600). Variable: PODNET_AUTH_PASSWORD_FILE.
+    --check
+        Check the plan and stop: the flags, the config file, each origin, the
+        files and the directories, and the edge legs. The check of an origin is
+        a connection, and the TLS handshake for https, with no request. No
+        Cloudflare API call, no edge connection, no file is written. Exit 0
+        when each check passes, 1 when a check fails. With --json, one JSON
+        document. serve and git serve also check each --local (and --ssh)
+        listener: a TCP address is bound with no listen and closed at once.
+    --ca-file PATH
+        A file of TLS roots (PEM). podnet uses only these roots for each
+        connection that it opens as a client. Without it, podnet reads
+        SSL_CERT_FILE, else podnet-ca.pem beside the binary, the system bundle
+        and the compiled-in roots.
+    --proxy URL
+        The proxy for each connection: http://, socks5:// or socks5h://
+        [user:password@]host[:port]. A proxy on a unix socket:
+        socks5h+unix:/PATH (or socks5h://unix:/PATH). A proxy at the stdin and
+        stdout of a command, one for each connection (as ProxyCommand of SSH):
+        http+exec:COMMAND or socks5h+exec:COMMAND. Without it, podnet reads
+        HTTPS_PROXY and ALL_PROXY (no +exec: there). NO_PROXY names the targets
+        that do not use a proxy. PODNET_PROXY gives the same value, and keeps a
+        password out of the command line. Percent-encode / ? # @ : in the user
+        and the password. Variable: PODNET_PROXY.
+    --no-proxy
+        Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
+    --egress SPEC
+        The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
+        (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
+        chain (TOP over BELOW) are for podnet forward --network, podnet route
+        and podnet wg serve. With podnet link dial and podnet link connect,
+        each --egress is one element of the chain before the tcp carrier
+        (direct, a proxy, peer:FINGERPRINT/SERVICE). The elements are in order:
+        the last element reaches the carrier address. With podnet wg serve, one
+        --egress is the way of the flows of the peers (each spec of podnet
+        forward --network that carries TCP).
+    --resolve HOST=IP
+        Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
+        adds to it. TLS still checks the name of the certificate.
+    -q, --quiet
+        Log warnings and errors only.
+    -v, --verbose
+        Log more: -v for debug, -vv for trace. RUST_LOG takes priority.
+    --color COLOR
+        Colours in the log: auto (only on a terminal, and not with NO_COLOR),
+        always or never. Default: auto. Values: auto, always, never.
+    --log-format LOG_FORMAT
+        The form of the log on stderr: text, or json (one object for each
+        line). Default: text. Values: text, json.
+
+  Rules:
+    Give only one of --no-proxy, --proxy.
+
+    Give only one of --quiet, --verbose.
+
+    --auth-user needs --auth-password-file.
+
+    --auth-password-file needs --auth-user.
+
+podnet tunnel inspect show
+  Show one exchange: the heads and the bodies (each secret value is [redacted];
+  a body keeps the cap of tunnel --inspect-body).
+
+  Usage: podnet tunnel inspect show [OPTIONS] ID
+
+  Arguments:
+    ID
+        The id of the exchange (from list).
+
+  Options:
+    --name INSTANCE
+        The instance name of the tunnel (--name, or the name of --detach; a
+        tunnel with no name is tunnel-HEX, in its log). Default: the one tunnel
+        with --inspect that runs.
+    --service-url SERVICE_URL
+        Quick-tunnel provisioning endpoint. Default:
+        https://api.trycloudflare.com.
+    --user-agent USER_AGENT
+        User-Agent sent when provisioning.
+    --ha-connections HA_CONNECTIONS
+        Edge connections (1-8), for redundancy: when one is lost, the others
+        carry the visitors. The edge chooses the connection of each request,
+        and one request uses one connection, so more connections do not make
+        one transfer faster. Default: ha-connections of the file of tunnel
+        --config, else 2.
+    --protocol PROTOCOL
+        Edge protocol: quic (UDP 7844), http2 or h2 (TCP 7844), or auto (quic,
+        then http2). Default: protocol of the file of tunnel --config, else
+        auto. Values: auto, quic, http2, h2.
+    --transport TRANSPORT
+        How to reach the edge: auto (try 7844, fall back to WARP on 443),
+        direct (port 7844), warp (carried on TCP 443) or relay. relay is HTTP/2
+        in a WebSocket to the relay of --relay, on TCP 443. Default: auto.
+        Values: auto, direct, warp, relay.
+    --relay URL
+        The WebSocket-to-TCP relay of --transport relay: a URL, or a comma list
+        of hosts of one deployment. The variable PODNET_RELAY_TOKEN (not
+        PODNET_RELAY) gives a token; without it, podnet mints one. Default:
+        https://tcp.ssh.relay.ajam.dev. Variable: PODNET_RELAY.
+    --warp-identity PATH
+        Keep the WARP device and MASQUE key here and resume them next run.
+        Without it, every run registers a new anonymous device.
+    --masque-endpoint IP:PORT
+        The WARP MASQUE front door of `--transport warp`: IP:PORT, in place of
+        the doors of the device record. With no IPv4 route, the IPv6 door of
+        the record goes first.
+    --leg-failover LEG_FAILOVER
+        How the next edge leg starts: staggered (when the leg before has not
+        registered in 2 s, or at once when it fails) or serial (only after the
+        leg before failed). Default: staggered. Values: staggered, serial.
+        Variable: PODNET_LEG_FAILOVER.
+    --no-verify
+        Do not fetch the public URL to prove reachability. Origin TLS checks
+        stay on.
+    --qr
+        Print a QR code for the public URL.
+    --json
+        Print the state of the tunnel as JSON lines on stdout, in place of the
+        text lines. Each line is one object with the key "event": "ready" (url,
+        tunnel_id, locations, and pin for share) or "verified" (url).
+    --run-for RUN_FOR
+        Stay up for this many seconds instead of until Ctrl-C (it also ends the
+        verify of the public URL).
+    --auth-user USER
+        Each visitor must give this user (HTTP Basic), with the password of
+        --auth-password-file. A visitor with no right credential gets 401 and
+        reaches no origin; the origin does not get the header. For HTTP origins
+        and tunnel --forward (podnet connect --auth-user); not for tunnel
+        --tcp. Variable: PODNET_AUTH_USER.
+    --auth-password-file FILE
+        The file with the password of --auth-user on its first line (mode
+        0600). Variable: PODNET_AUTH_PASSWORD_FILE.
+    --check
+        Check the plan and stop: the flags, the config file, each origin, the
+        files and the directories, and the edge legs. The check of an origin is
+        a connection, and the TLS handshake for https, with no request. No
+        Cloudflare API call, no edge connection, no file is written. Exit 0
+        when each check passes, 1 when a check fails. With --json, one JSON
+        document. serve and git serve also check each --local (and --ssh)
+        listener: a TCP address is bound with no listen and closed at once.
+    --ca-file PATH
+        A file of TLS roots (PEM). podnet uses only these roots for each
+        connection that it opens as a client. Without it, podnet reads
+        SSL_CERT_FILE, else podnet-ca.pem beside the binary, the system bundle
+        and the compiled-in roots.
+    --proxy URL
+        The proxy for each connection: http://, socks5:// or socks5h://
+        [user:password@]host[:port]. A proxy on a unix socket:
+        socks5h+unix:/PATH (or socks5h://unix:/PATH). A proxy at the stdin and
+        stdout of a command, one for each connection (as ProxyCommand of SSH):
+        http+exec:COMMAND or socks5h+exec:COMMAND. Without it, podnet reads
+        HTTPS_PROXY and ALL_PROXY (no +exec: there). NO_PROXY names the targets
+        that do not use a proxy. PODNET_PROXY gives the same value, and keeps a
+        password out of the command line. Percent-encode / ? # @ : in the user
+        and the password. Variable: PODNET_PROXY.
+    --no-proxy
+        Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
+    --egress SPEC
+        The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
+        (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
+        chain (TOP over BELOW) are for podnet forward --network, podnet route
+        and podnet wg serve. With podnet link dial and podnet link connect,
+        each --egress is one element of the chain before the tcp carrier
+        (direct, a proxy, peer:FINGERPRINT/SERVICE). The elements are in order:
+        the last element reaches the carrier address. With podnet wg serve, one
+        --egress is the way of the flows of the peers (each spec of podnet
+        forward --network that carries TCP).
+    --resolve HOST=IP
+        Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
+        adds to it. TLS still checks the name of the certificate.
+    -q, --quiet
+        Log warnings and errors only.
+    -v, --verbose
+        Log more: -v for debug, -vv for trace. RUST_LOG takes priority.
+    --color COLOR
+        Colours in the log: auto (only on a terminal, and not with NO_COLOR),
+        always or never. Default: auto. Values: auto, always, never.
+    --log-format LOG_FORMAT
+        The form of the log on stderr: text, or json (one object for each
+        line). Default: text. Values: text, json.
+
+  Rules:
+    Give only one of --no-proxy, --proxy.
+
+    Give only one of --quiet, --verbose.
+
+    --auth-user needs --auth-password-file.
+
+    --auth-password-file needs --auth-user.
+
+podnet tunnel inspect replay
+  Send the request of one exchange to its origin again. The ring gets a new
+  exchange that names the first. A redacted header or query parameter is left
+  out, and the output says so. An open or incomplete exchange, a cut request
+  body and a WebSocket are refused (exit 65).
+
+  Usage: podnet tunnel inspect replay [OPTIONS] ID
+
+  Arguments:
+    ID
+        The id of the exchange (from list).
+
+  Options:
+    --name INSTANCE
+        The instance name of the tunnel (--name, or the name of --detach; a
+        tunnel with no name is tunnel-HEX, in its log). Default: the one tunnel
+        with --inspect that runs.
+    --service-url SERVICE_URL
+        Quick-tunnel provisioning endpoint. Default:
+        https://api.trycloudflare.com.
+    --user-agent USER_AGENT
+        User-Agent sent when provisioning.
+    --ha-connections HA_CONNECTIONS
+        Edge connections (1-8), for redundancy: when one is lost, the others
+        carry the visitors. The edge chooses the connection of each request,
+        and one request uses one connection, so more connections do not make
+        one transfer faster. Default: ha-connections of the file of tunnel
+        --config, else 2.
+    --protocol PROTOCOL
+        Edge protocol: quic (UDP 7844), http2 or h2 (TCP 7844), or auto (quic,
+        then http2). Default: protocol of the file of tunnel --config, else
+        auto. Values: auto, quic, http2, h2.
+    --transport TRANSPORT
+        How to reach the edge: auto (try 7844, fall back to WARP on 443),
+        direct (port 7844), warp (carried on TCP 443) or relay. relay is HTTP/2
+        in a WebSocket to the relay of --relay, on TCP 443. Default: auto.
+        Values: auto, direct, warp, relay.
+    --relay URL
+        The WebSocket-to-TCP relay of --transport relay: a URL, or a comma list
+        of hosts of one deployment. The variable PODNET_RELAY_TOKEN (not
+        PODNET_RELAY) gives a token; without it, podnet mints one. Default:
+        https://tcp.ssh.relay.ajam.dev. Variable: PODNET_RELAY.
+    --warp-identity PATH
+        Keep the WARP device and MASQUE key here and resume them next run.
+        Without it, every run registers a new anonymous device.
+    --masque-endpoint IP:PORT
+        The WARP MASQUE front door of `--transport warp`: IP:PORT, in place of
+        the doors of the device record. With no IPv4 route, the IPv6 door of
+        the record goes first.
+    --leg-failover LEG_FAILOVER
+        How the next edge leg starts: staggered (when the leg before has not
+        registered in 2 s, or at once when it fails) or serial (only after the
+        leg before failed). Default: staggered. Values: staggered, serial.
+        Variable: PODNET_LEG_FAILOVER.
+    --no-verify
+        Do not fetch the public URL to prove reachability. Origin TLS checks
+        stay on.
+    --qr
+        Print a QR code for the public URL.
+    --json
+        Print the state of the tunnel as JSON lines on stdout, in place of the
+        text lines. Each line is one object with the key "event": "ready" (url,
+        tunnel_id, locations, and pin for share) or "verified" (url).
+    --run-for RUN_FOR
+        Stay up for this many seconds instead of until Ctrl-C (it also ends the
+        verify of the public URL).
+    --auth-user USER
+        Each visitor must give this user (HTTP Basic), with the password of
+        --auth-password-file. A visitor with no right credential gets 401 and
+        reaches no origin; the origin does not get the header. For HTTP origins
+        and tunnel --forward (podnet connect --auth-user); not for tunnel
+        --tcp. Variable: PODNET_AUTH_USER.
+    --auth-password-file FILE
+        The file with the password of --auth-user on its first line (mode
+        0600). Variable: PODNET_AUTH_PASSWORD_FILE.
+    --check
+        Check the plan and stop: the flags, the config file, each origin, the
+        files and the directories, and the edge legs. The check of an origin is
+        a connection, and the TLS handshake for https, with no request. No
+        Cloudflare API call, no edge connection, no file is written. Exit 0
+        when each check passes, 1 when a check fails. With --json, one JSON
+        document. serve and git serve also check each --local (and --ssh)
+        listener: a TCP address is bound with no listen and closed at once.
+    --ca-file PATH
+        A file of TLS roots (PEM). podnet uses only these roots for each
+        connection that it opens as a client. Without it, podnet reads
+        SSL_CERT_FILE, else podnet-ca.pem beside the binary, the system bundle
+        and the compiled-in roots.
+    --proxy URL
+        The proxy for each connection: http://, socks5:// or socks5h://
+        [user:password@]host[:port]. A proxy on a unix socket:
+        socks5h+unix:/PATH (or socks5h://unix:/PATH). A proxy at the stdin and
+        stdout of a command, one for each connection (as ProxyCommand of SSH):
+        http+exec:COMMAND or socks5h+exec:COMMAND. Without it, podnet reads
+        HTTPS_PROXY and ALL_PROXY (no +exec: there). NO_PROXY names the targets
+        that do not use a proxy. PODNET_PROXY gives the same value, and keeps a
+        password out of the command line. Percent-encode / ? # @ : in the user
+        and the password. Variable: PODNET_PROXY.
+    --no-proxy
+        Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
+    --egress SPEC
+        The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
+        (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
+        chain (TOP over BELOW) are for podnet forward --network, podnet route
+        and podnet wg serve. With podnet link dial and podnet link connect,
+        each --egress is one element of the chain before the tcp carrier
+        (direct, a proxy, peer:FINGERPRINT/SERVICE). The elements are in order:
+        the last element reaches the carrier address. With podnet wg serve, one
+        --egress is the way of the flows of the peers (each spec of podnet
+        forward --network that carries TCP).
+    --resolve HOST=IP
+        Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
+        adds to it. TLS still checks the name of the certificate.
+    -q, --quiet
+        Log warnings and errors only.
+    -v, --verbose
+        Log more: -v for debug, -vv for trace. RUST_LOG takes priority.
+    --color COLOR
+        Colours in the log: auto (only on a terminal, and not with NO_COLOR),
+        always or never. Default: auto. Values: auto, always, never.
+    --log-format LOG_FORMAT
+        The form of the log on stderr: text, or json (one object for each
+        line). Default: text. Values: text, json.
+
+  Rules:
+    Give only one of --no-proxy, --proxy.
+
+    Give only one of --quiet, --verbose.
+
+    --auth-user needs --auth-password-file.
+
+    --auth-password-file needs --auth-user.
 
 podnet serve
   Serve a directory over a tunnel.
@@ -14446,8 +15005,8 @@ podnet man                                      # the manual
 
 | Area | Commands | Function | Document |
 | --- | --- | --- | --- |
-| Tunnels | `tunnel`, `demo`, `qr` | Quick tunnels and named tunnels to a local origin (HTTP, unix socket, TCP). | [tunnels](https://github.com/PodUtils/podnet/blob/main/docs/tunnels.md) |
-| End-to-end session | `tunnel --e2e`, `tunnel --inspect` | Noise XX inside the carrier before any application byte, the destination in a sealed envelope, record keys from the handshake, and the hop table. | [e2e](https://github.com/PodUtils/podnet/blob/main/docs/e2e.md) |
+| Tunnels | `tunnel`, `demo`, `qr`, `tunnel inspect` | Quick tunnels and named tunnels to a local origin (HTTP, unix socket, TCP). `tunnel --inspect` keeps the last HTTP exchanges in memory, with each secret redacted, for list, show and replay. | [tunnels](https://github.com/PodUtils/podnet/blob/main/docs/tunnels.md) |
+| End-to-end session | `tunnel --e2e`, `tunnel --e2e-inspect` | Noise XX inside the carrier before any application byte, the destination in a sealed envelope, record keys from the handshake, and the hop table. | [e2e](https://github.com/PodUtils/podnet/blob/main/docs/e2e.md) |
 | Packet sidecar | `sidecar probe`, `search`, `run`, `split`, `faketcp`, `bond` | The packet path behind the build feature `sidecar`: a three-valued probe, a local simulator, five primitives, fake TCP and a bond, each with its limit. | [limits-carriers](https://github.com/PodUtils/podnet/blob/main/docs/limits-carriers.md) |
 | Raw streams | `tunnel --forward`, `connect` | SSH, databases and unix sockets through a quick tunnel. | [tunnels](https://github.com/PodUtils/podnet/blob/main/docs/tunnels.md) |
 | File server, transfer, git | `serve`, `share`, `git` | Serve a directory, receive or send files with a PIN, host git repositories; HTTPS on a public port with a certificate of ACME (`--acme`). | [serve](https://github.com/PodUtils/podnet/blob/main/docs/serve.md) |
@@ -15136,6 +15695,84 @@ The end of stdin closes the WebSocket. The close of the remote ends the
 command. `--stdio` takes `--auth-user` and `--auth-password-file`. It exits
 69 when the remote does not answer. It cannot be used with `-L` or
 `--detach`.
+
+## The inspector
+
+`podnet tunnel --inspect` keeps the last HTTP exchanges of the origins in
+memory. Use it to see what a webhook sender sent, and to send it again.
+
+```sh
+podnet tunnel --port 3000 --inspect --name hooks --detach
+podnet tunnel inspect list --name hooks
+podnet tunnel inspect show 3 --name hooks
+podnet tunnel inspect replay 3 --name hooks
+```
+
+* The inspector is off by default. It gets each exchange of an HTTP origin
+  (`--url`, `--port`, `--unix`, an `http`, `https`, `unix` or `unix+tls`
+  service of `--config`). A raw `--tcp` stream, `--forward`, a file server
+  and a request that the credential of `--auth-user` refuses (401) are not
+  exchanges of an origin: the inspector gets none of them.
+* The ring keeps the last `--inspect-keep N` exchanges (default 100, 1 to
+  10000). A full ring drops the oldest exchange. Each exchange has an id,
+  the start time, the method, the target, the heads, the status, the time,
+  and its state: `open`, `complete` or `incomplete` (the copy ended with an
+  error).
+* Each body keeps `--inspect-body BYTES` (default 65536, at most 16 MiB).
+  The ring counts the bytes that it cut. A chunked body is kept as its
+  payload, with no size lines. A WebSocket keeps its two heads and no body.
+  The memory of the ring is at most N x 2 x BYTES, plus the heads.
+* The ring is in memory only. podnet never writes it to a file, and the
+  exit of the tunnel removes it.
+* The sink gets each part after its write to the peer. It never holds back
+  a byte to the visitor or to the origin: a streaming answer reaches the
+  visitor as it does with no `--inspect`.
+
+Redaction:
+
+* The stored copy has `[redacted]` in place of the value of
+  `Authorization`, `Proxy-Authorization`, `Cookie`, `Set-Cookie`, and of each
+  header and query parameter whose name contains `token`, `secret`, `key`,
+  `passw`, `credential`, `session`, `auth`, `signature`, `cookie` or `jwt`.
+  The forward to the origin keeps the real values. `show` names the redacted
+  headers.
+* A body is kept as it is. A form or a JSON body can hold a secret: the
+  socket is for the user of the tunnel only.
+* `--inspect-raw` keeps each value, and podnet prints a warning.
+
+The socket:
+
+* `NAME.inspect.sock` in the run directory (`podnet ps`), mode 0600. NAME is
+  the name of `--name` or of `--detach`. A tunnel with no name uses
+  `tunnel-HEX`, with 8 random hex digits; the log line `inspector: unix:PATH` gives it. The ready
+  document of `--detach` has the path as `inspect`.
+* The server checks the user of each peer (`SO_PEERCRED`): the user of the
+  tunnel or root. Another user gets exit 77. There is no TCP listener.
+* With no `--name`, the commands use the one tunnel with `--inspect` that
+  runs. When more than one runs, they exit 64 and name each one.
+
+The commands:
+
+* `podnet tunnel inspect list` prints one line for each exchange, the
+  oldest first. `show ID` prints the heads and the bodies. A body that is
+  not UTF-8 is in base64 in the JSON output only.
+* `podnet tunnel inspect replay ID` sends the stored request to its origin
+  again, with `Connection: close`, and the ring gets a new exchange with
+  `replayed_from`. A redacted header or query parameter is left out of the
+  request, and the output names it (`left_out`). The replay is not a
+  visitor request in the metrics of the tunnel.
+* `replay` refuses (exit 65) an exchange that is open or incomplete, an
+  upgrade (a WebSocket), and a request body that the cap cut. Start the
+  tunnel with a larger `--inspect-body` to replay large bodies.
+* The capture gives the head that went to the origin, not the ingress rule.
+  `replay` uses the first rule whose path matches the target and whose
+  `httpHostHeader` or hostname matches the `Host` of the stored head.
+* `--json` prints one JSON document with `schema` 1 and `podnet`. Exit
+  codes: 66 when the ring has no such id, 69 when no tunnel with `--inspect`
+  runs or the origin fails, 124 when the origin gives no full answer in 30
+  s.
+* The hop table of the end-to-end session is `--e2e-inspect`
+  ([e2e.md](e2e.md)).
 
 ## Other flags of `podnet tunnel`
 
@@ -19392,10 +20029,13 @@ against the binary and against this file. The test `the_ready_keys_are_fixed`
 `--token-file`, `--transport`, `--unix`, `--url`, `--user-agent`, `--verbose`,
 `--warp-identity`.
 
-The end-to-end session adds `--e2e`, `--inspect`, `--connect`, `--control`,
+The end-to-end session adds `--e2e`, `--e2e-inspect`, `--connect`, `--control`,
 `--listen`, `--control-listen`, `--pair`, `--suite`, `--destination`,
 `--service`, `--peer`, `--compat-destination`, `--e2e-token` and
 `--e2e-token-seed-file`. [e2e.md](e2e.md) describes the session.
+
+The inspector of the HTTP exchanges adds `--inspect`, `--inspect-keep`,
+`--inspect-body` and `--inspect-raw`. [tunnels.md](tunnels.md) describes it.
 
 ### Exit codes
 

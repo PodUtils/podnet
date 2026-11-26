@@ -608,7 +608,7 @@ fn token_seed(secret: &[u8; 32], relay: &str, service: &str) -> [u8; 32] {
     hasher.finalize().into()
 }
 
-/// The exchange as a hop sees it, for `tunnel --inspect` (LEARN-3): the
+/// The exchange as a hop sees it, for `tunnel --e2e-inspect` (LEARN-3): the
 /// hop table, and the relay's view of a prelude and the first record. The
 /// call runs a handshake in memory and opens no socket.
 pub async fn inspect(cfg: &Config, peer: &PublicKey) -> Result<String> {

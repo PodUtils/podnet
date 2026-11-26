@@ -35,6 +35,7 @@ pub(crate) mod sidecar;
 pub(crate) mod ssh_relay;
 pub(crate) mod transfer;
 pub(crate) mod tunnel;
+pub(crate) mod tunnel_inspect;
 pub(crate) mod warp;
 pub(crate) mod wg;
 

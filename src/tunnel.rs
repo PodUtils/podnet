@@ -4,7 +4,8 @@
 //! the relay of `--transport relay`, the WARP device of `--warp-identity`,
 //! the services of podnet (files, git, shares), its log and its counters,
 //! and the settings from its variables (`PODNET_EDGE`, `PODNET_UDP`,
-//! `PODNET_VERIFY_STRICT`, `PODNET_READY_TIMEOUT`).
+//! `PODNET_VERIFY_STRICT`, `PODNET_READY_TIMEOUT`), and the capture sink
+//! of `tunnel --inspect` ([`inspect`]).
 
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -20,6 +21,8 @@ use crate::config::Config;
 use crate::metrics::Metrics;
 use crate::service::ServiceRuntime;
 use crate::warp::WarpClient;
+
+pub mod inspect;
 
 pub use pod_cloudflare::tunnel::*;
 pub use pod_cloudflare::{Host, Settings, Words};
@@ -60,8 +63,18 @@ pub fn hosted() -> Result<Hosted> {
     });
     host.warp = Some(Arc::new(Warp::default()));
     host.settings = settings;
+    // `tunnel --inspect` (T-244): the sink gets each HTTP exchange of an
+    // origin after its write; the inspector keeps the host for a replay.
+    let inspector = inspect::installed();
+    if let Some(inspector) = &inspector {
+        host.capture = Some(inspector.sink(None));
+    }
+    let host = Arc::new(host);
+    if let Some(inspector) = inspector {
+        inspector.attach(&host);
+    }
     Ok(Hosted {
-        host: Arc::new(host),
+        host,
         services,
         metrics,
     })

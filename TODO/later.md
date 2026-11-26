@@ -1813,6 +1813,42 @@ block of the session of podcrates ended. The capture sink of step 2 sits in the 
 
 2026-11-26, the blocker ended (The capture hook in the copy helpers of `pod-cloudflare` (COORD-128, #758, to podcrates).): podcrates `v0.86.0` (T-612) has the capture hook (`host.capture`, a sink of the headers of the visitor). The work of the Approach can start: set the sink in `base_host` for `tunnel --inspect`, and redact the headers in the sink.
 
+2026-11-26, the build on the hook of `v0.86.0` (`src/tunnel/inspect.rs`, `src/tunnel/inspect/`,
+`src/cli/cmd/tunnel_inspect.rs`, `tests/tunnel_inspect.rs`). The Approach changes:
+
+- The sink goes into `hosted()` of `src/tunnel.rs`, not into `base_host` (the edge discovery uses
+  `base_host`): `tunnel --inspect` installs the inspector, and each host of a start of the tunnel gets a sink
+  of its own. The inspector keeps the host weakly, for a replay.
+- `--inspect` was the hop table of `--e2e` (LEARN-3). The hop table moves to `--e2e-inspect`
+  (`docs/decisions.md`, 2026-11-26). The heading of the relay view comes from `pod-e2e` and keeps the text
+  `tunnel --inspect`.
+- The default of `--inspect-body` is 65536, not 1048576. The ring of 100 exchanges holds at most about 12.5
+  MiB of bodies.
+- The secret words are `token`, `secret`, `key`, `passw`, `credential`, `session`, `auth`, `signature`,
+  `cookie` and `jwt`, for the headers and for the query parameters of the target.
+- The commands are `podnet tunnel inspect list|show|replay ID [--name INSTANCE]`. `clear` is not built. The
+  socket is `NAME.inspect.sock` in the run directory (`tunnel-HEX`, 8 random hex digits, with no name); the ready document has it as
+  `inspect`.
+- `replay` calls `forward_http` of the crate with a sink of its own: the new exchange has `replayed_from`, and
+  the counters of the tunnel do not see it.
+
+What the hook does not give (no change of the crate; a COORD issue can ask for it):
+
+- The head of the capture is the head that went to the origin. It names no ingress rule and no hostname of
+  the visitor. With `httpHostHeader`, `Host` is the value of the rule. `replay` takes the first rule whose
+  path matches the target and whose `httpHostHeader` or hostname matches `Host`. A file with two rules of the
+  same `httpHostHeader` and the same path can replay to the wrong one.
+- A chunked request body that the decoder of the crate refuses drops the sink for that exchange with no
+  `end`. The record stays `open` until the start of the tunnel ends (the drop of its sink makes it
+  `incomplete`).
+
+Not run: the cost on a real tunnel at 1000 requests per second, and the resident set of a 50 MiB upload and
+download with `--inspect` (Prove). Run by hand on 2026-11-26: a quick tunnel with `--inspect --detach`, a
+POST with `Authorization` and `?token=` through the public URL, then `list`, `show` (both values
+`[redacted]`) and `replay` (the origin got no `Authorization` and no `token`; exchange 2 names exchange 1).
+The commands `tunnel inspect list`, `show` and `replay` have no scenario of the release gate: they are
+experimental (`src/cli/scenarios.txt`).
+
 # T-248: Router: a guest-wire router that ends guest TCP on smoltcp
 
 **Source:** the owner, 2026-11-11 (`docs/decisions.md`, Guest-wire router); T-176; GitHub #371 and #372.

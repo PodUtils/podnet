@@ -225,7 +225,7 @@ fn tunnel_doc(
     let forward = handle
         .forward_path()
         .map(|path| (url.and_then(|u| podnet::ws::forward_url(u, path)), path));
-    detach_doc(
+    let mut doc = detach_doc(
         url,
         verified,
         unverified,
@@ -233,7 +233,12 @@ fn tunnel_doc(
         handle.locations(),
         handle.leg(),
         forward,
-    )
+    );
+    // T-244: the socket of `tunnel --inspect`.
+    if let Some(path) = podnet::tunnel::inspect::served_path() {
+        doc["inspect"] = path.display().to_string().into();
+    }
+    doc
 }
 
 /// The keys of the ready document of a tunnel (T-218: the connector profile,

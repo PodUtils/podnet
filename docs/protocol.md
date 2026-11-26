@@ -541,10 +541,13 @@ against the binary and against this file. The test `the_ready_keys_are_fixed`
 `--token-file`, `--transport`, `--unix`, `--url`, `--user-agent`, `--verbose`,
 `--warp-identity`.
 
-The end-to-end session adds `--e2e`, `--inspect`, `--connect`, `--control`,
+The end-to-end session adds `--e2e`, `--e2e-inspect`, `--connect`, `--control`,
 `--listen`, `--control-listen`, `--pair`, `--suite`, `--destination`,
 `--service`, `--peer`, `--compat-destination`, `--e2e-token` and
 `--e2e-token-seed-file`. [e2e.md](e2e.md) describes the session.
+
+The inspector of the HTTP exchanges adds `--inspect`, `--inspect-keep`,
+`--inspect-body` and `--inspect-raw`. [tunnels.md](tunnels.md) describes it.
 
 ### Exit codes
 

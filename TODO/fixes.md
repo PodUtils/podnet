@@ -2360,7 +2360,7 @@ The test asserts `parse("http://127.0.0.1").unwrap().port == 80` (or the ruled n
 
 ## Premise
 
-- `--relay` and `--transport` are `global = true` in `TunnelOpts` (`src/cli/opts.rs:41-51`). `TunnelOpts` is flattened only into `tunnel` and `share` (`src/cli/cmd/tunnel.rs:17`, `src/cli/cmd/share.rs:22,62,114`). `DoctorArgs` has no `--relay` (`src/cli/cmd/host.rs:14-33`). A global flag does not reach a sibling command, so `doctor --relay X` most likely fails in clap. Not run (no build).
+- `--relay` and `--transport` are `global = true` in `TunnelOpts` (`src/cli/opts.rs:41-51`). `TunnelOpts` is flattened only into `tunnel` and `share` (`src/cli/cmd/tunnel.rs:21`, `src/cli/cmd/share.rs:22,62,114`). `DoctorArgs` has no `--relay` (`src/cli/cmd/host.rs:14-33`). A global flag does not reach a sibling command, so `doctor --relay X` most likely fails in clap. Not run (no build).
 - `targets()` has no argument (`src/doctor.rs:115`). `doctor()` calls `Options::default()` with three fields set (`src/cli/cmd/host.rs:286-305`).
 - `src/doctor.rs` has 1305 lines in `scripts/size-allow.txt`. It can only shrink: move code out in the same commit (T-033).
 
@@ -3049,7 +3049,7 @@ Each JSON document of podnet has the keys `schema` (1) and `podnet` (`status::st
 
 ## Premise
 
-- `src/cli/cmd/run.rs:94-104` (no `stamped`). The only `stamped` call of `run.rs` is `:291` (`announce`).
+- `src/cli/cmd/run.rs:94-104` (no `stamped`). The only `stamped` call of `run.rs` is `:296` (`announce`).
 - `grep -rn "status::stamped" src/cli` gives 8 hits, none in `run_share`.
 - The `verified` line is unstamped in every command (`run.rs:119`, `:166`). It stays as it is.
 
@@ -3084,9 +3084,9 @@ so. The README (`:307-362`) documents the precedence of the token and protocol f
 
 ## Premise
 
-- Guard: `src/cli/cmd/tunnel.rs:192` (`if args.config.is_none()`). The flags are read at `:194-218`, `:301`.
-  The three per-origin flags are declared at `:62-73`.
-- The token case already has a usage error: `src/cli/cmd/tunnel.rs:167-183` (issue 172).
+- Guard: `src/cli/cmd/tunnel.rs:220` (`if args.config.is_none()`). The flags are read at `:222-246`, `:347`.
+  The three per-origin flags are declared at `:66-77`.
+- The token case already has a usage error: `src/cli/cmd/tunnel.rs:195-211` (issue 172).
 - Existing tests with `--config`: `a_bad_configuration_exits_78` and `bad_credentials_exit_78` (`tests/cli/exit_codes.rs`), `check_mode` and `the_config_file_gives_the_protocol_and_the_connections` (`tests/cli/startup.rs`) (none gives an origin flag).
 
 ## Approach
@@ -13299,7 +13299,7 @@ Measured on 2026-11-23 with the debug binary of beta.17: the `edge` row (six cop
   cause comes twice. `src/report.rs:62` has `chain_text`, which names a cause that is already in the line once. The
   rows of `--check` do not call it. The `origin` rows are the double text of `io_fail`
   (`PodUtils/podcrates:crates/pod-cloudflare/src/origin.rs:155`, `:370`, `:380`).
-- Read: the `edge` row comes from the system resolver of podnet (`system_srv`, `src/tunnel.rs:282`). hickory writes
+- Read: the `edge` row comes from the system resolver of podnet (`system_srv`, `src/tunnel.rs:295`). hickory writes
   `no records found for Query { ... }` with the Debug form of its `Query`. The row shows the error of hickory as it is.
 - Read: `src/egress.rs:361` adds `{at} through the proxy {label}` to the error of a dial. `pod-ws` adds `could not
   connect to {at}` (`PodUtils/podcrates:crates/pod-ws/src/way.rs`, `dial_error`, which strips only
@@ -13317,7 +13317,7 @@ Measured on 2026-11-23 with the debug binary of beta.17: the `edge` row (six cop
 1. podnet: one function gives the text of an error for a row or a line (`report::chain_text`, or a new `words(&err)` that
    calls it). `src/preflight.rs` uses it for each row. A `{err:#}` in a line for the user is a fault: step 5 covers
    each row.
-2. podnet: `system_srv` (`src/tunnel.rs:282`) maps `NoRecordsFound` to one sentence: `no SRV records for NAME at the
+2. podnet: `system_srv` (`src/tunnel.rs:295`) maps `NoRecordsFound` to one sentence: `no SRV records for NAME at the
    system resolver`. It keeps no Debug form of a struct. Before that, read `pod-dns` for a lookup of SRV records
    (shared code first).
 3. podnet: `src/egress.rs:361` names the target once. The line of a dial is

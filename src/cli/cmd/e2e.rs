@@ -13,13 +13,13 @@ use super::tunnel::TunnelArgs;
 
 /// The e2e flags of `tunnel`. None of the Cloudflare flags apply.
 pub(crate) async fn tunnel_e2e(args: &TunnelArgs) -> Result<()> {
-    let inspect = args.inspect;
+    let inspect = args.e2e_inspect;
     let (relay, pair_name) = match args.pair.as_deref() {
         Some(pair) => pair.split_once('/').ok_or_else(|| {
             usage("--pair is RELAY/PAIR, the two names that the relay advertises")
         })?,
         // The table and the relay view are a local model: they need no
-        // relay of the caller, so `podnet tunnel --inspect` alone works.
+        // relay of the caller, so `podnet tunnel --e2e-inspect` alone works.
         None if inspect => ("relay", "pair"),
         None => return Err(usage("--e2e needs --pair RELAY/PAIR")),
     };

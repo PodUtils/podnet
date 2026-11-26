@@ -349,7 +349,9 @@ fn the_manual_names_each_command_and_flag() {
 }
 
 /// T-358 step 4: `src/cli/scenarios.txt` has one line for each command with
-/// no subcommand (not hidden), and no other line.
+/// no subcommand (not hidden), and for each command that runs with no
+/// subcommand too (`tunnel`, beside `tunnel inspect list`, T-244), and no
+/// other line.
 #[test]
 fn the_table_of_scenarios_has_each_command() {
     fn leaves(cmd: &clap::Command, path: &str, out: &mut Vec<String>) {
@@ -357,7 +359,8 @@ fn the_table_of_scenarios_has_each_command() {
             .get_subcommands()
             .filter(|c| c.get_name() != "help" && !c.is_hide_set())
             .collect();
-        if subs.is_empty() && !path.is_empty() {
+        let runs_alone = cmd.is_args_conflicts_with_subcommands_set();
+        if (subs.is_empty() || runs_alone) && !path.is_empty() {
             out.push(path.to_string());
         }
         for sub in subs {

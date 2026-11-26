@@ -295,6 +295,84 @@ command. `--stdio` takes `--auth-user` and `--auth-password-file`. It exits
 69 when the remote does not answer. It cannot be used with `-L` or
 `--detach`.
 
+## The inspector
+
+`podnet tunnel --inspect` keeps the last HTTP exchanges of the origins in
+memory. Use it to see what a webhook sender sent, and to send it again.
+
+```sh
+podnet tunnel --port 3000 --inspect --name hooks --detach
+podnet tunnel inspect list --name hooks
+podnet tunnel inspect show 3 --name hooks
+podnet tunnel inspect replay 3 --name hooks
+```
+
+* The inspector is off by default. It gets each exchange of an HTTP origin
+  (`--url`, `--port`, `--unix`, an `http`, `https`, `unix` or `unix+tls`
+  service of `--config`). A raw `--tcp` stream, `--forward`, a file server
+  and a request that the credential of `--auth-user` refuses (401) are not
+  exchanges of an origin: the inspector gets none of them.
+* The ring keeps the last `--inspect-keep N` exchanges (default 100, 1 to
+  10000). A full ring drops the oldest exchange. Each exchange has an id,
+  the start time, the method, the target, the heads, the status, the time,
+  and its state: `open`, `complete` or `incomplete` (the copy ended with an
+  error).
+* Each body keeps `--inspect-body BYTES` (default 65536, at most 16 MiB).
+  The ring counts the bytes that it cut. A chunked body is kept as its
+  payload, with no size lines. A WebSocket keeps its two heads and no body.
+  The memory of the ring is at most N x 2 x BYTES, plus the heads.
+* The ring is in memory only. podnet never writes it to a file, and the
+  exit of the tunnel removes it.
+* The sink gets each part after its write to the peer. It never holds back
+  a byte to the visitor or to the origin: a streaming answer reaches the
+  visitor as it does with no `--inspect`.
+
+Redaction:
+
+* The stored copy has `[redacted]` in place of the value of
+  `Authorization`, `Proxy-Authorization`, `Cookie`, `Set-Cookie`, and of each
+  header and query parameter whose name contains `token`, `secret`, `key`,
+  `passw`, `credential`, `session`, `auth`, `signature`, `cookie` or `jwt`.
+  The forward to the origin keeps the real values. `show` names the redacted
+  headers.
+* A body is kept as it is. A form or a JSON body can hold a secret: the
+  socket is for the user of the tunnel only.
+* `--inspect-raw` keeps each value, and podnet prints a warning.
+
+The socket:
+
+* `NAME.inspect.sock` in the run directory (`podnet ps`), mode 0600. NAME is
+  the name of `--name` or of `--detach`. A tunnel with no name uses
+  `tunnel-HEX`, with 8 random hex digits; the log line `inspector: unix:PATH` gives it. The ready
+  document of `--detach` has the path as `inspect`.
+* The server checks the user of each peer (`SO_PEERCRED`): the user of the
+  tunnel or root. Another user gets exit 77. There is no TCP listener.
+* With no `--name`, the commands use the one tunnel with `--inspect` that
+  runs. When more than one runs, they exit 64 and name each one.
+
+The commands:
+
+* `podnet tunnel inspect list` prints one line for each exchange, the
+  oldest first. `show ID` prints the heads and the bodies. A body that is
+  not UTF-8 is in base64 in the JSON output only.
+* `podnet tunnel inspect replay ID` sends the stored request to its origin
+  again, with `Connection: close`, and the ring gets a new exchange with
+  `replayed_from`. A redacted header or query parameter is left out of the
+  request, and the output names it (`left_out`). The replay is not a
+  visitor request in the metrics of the tunnel.
+* `replay` refuses (exit 65) an exchange that is open or incomplete, an
+  upgrade (a WebSocket), and a request body that the cap cut. Start the
+  tunnel with a larger `--inspect-body` to replay large bodies.
+* The capture gives the head that went to the origin, not the ingress rule.
+  `replay` uses the first rule whose path matches the target and whose
+  `httpHostHeader` or hostname matches the `Host` of the stored head.
+* `--json` prints one JSON document with `schema` 1 and `podnet`. Exit
+  codes: 66 when the ring has no such id, 69 when no tunnel with `--inspect`
+  runs or the origin fails, 124 when the origin gives no full answer in 30
+  s.
+* The hop table of the end-to-end session is `--e2e-inspect`
+  ([e2e.md](e2e.md)).
+
 ## Other flags of `podnet tunnel`
 
 * `--ha-connections N` (1 to 8; default 2, else `ha-connections` of `--config`): the number of edge

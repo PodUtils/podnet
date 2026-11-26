@@ -119,6 +119,7 @@ docs/tunnels.md abb274ac56 live-manual named tunnels; <token> and <id> are place
 docs/tunnels.md c723784f4a live-manual a quick tunnel; <random> is a placeholder
 docs/tunnels.md 4bb2408e42 live-manual a quick tunnel; <random> is a placeholder
 docs/tunnels.md 3937e7aa8d live-manual a quick tunnel; <random> and user@host are placeholders
+docs/tunnels.md d97abbb45a live-manual a quick tunnel with --inspect in the background; hooks is a placeholder name
 docs/tunnels.md 3f647ef82e run  the listening ports of this host, and a QR code
 
 docs/virtual-network.md 9c652c4aa9 scenario  ./server binds 10.66.0.2:8080, an address that only the shim gives
@@ -138,7 +139,7 @@ docs/link.md 7c69a49b3e skip a reference list: the placeholders ADDRESS, FILE an
 # Blocks of the integ merge.
 docs/doctor.md 953525bdeb run [needs jq] doctor --shape opens no connection
 docs/e2e.md 667093fcb3 skip a template: pair and peer placeholders; two hosts
-docs/e2e.md f3503938b9 skip a template: pair and peer placeholders
+docs/e2e.md 09f3ab2ac3 skip a template: pair and peer placeholders
 docs/e2e.md 1f6dde44b9 skip a reference: ... is a placeholder
 docs/harness.md fd5f5c9027 scenario  the fixtures of tests/data/harness in ./DIR; the archive goes to ./FILE
 docs/harness.md 3e41583a93 scenario  the archive of tests/data/harness, unzipped in the work directory
