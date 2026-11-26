@@ -22,7 +22,7 @@ type Case<'a> = (&'a str, HashMap<String, String>, Option<&'a str>, &'a str);
 /// The context and the trust of the stands: their CA alone, in a file of
 /// this module (the file of `turn_mock::client_context` is written again by
 /// each call, so a parallel read can see it half written).
-fn stand_tls() -> (Arc<pod_tls::Context>, pod_tls::Trust) {
+pub(super) fn stand_tls() -> (Arc<pod_tls::Context>, pod_tls::Trust) {
     static MADE: std::sync::OnceLock<(Arc<pod_tls::Context>, pod_tls::Trust)> =
         std::sync::OnceLock::new();
     MADE.get_or_init(|| {
@@ -64,7 +64,7 @@ async fn up_road(
     }
 }
 
-fn vars(pairs: &[(&str, &str)]) -> HashMap<String, String> {
+pub(super) fn vars(pairs: &[(&str, &str)]) -> HashMap<String, String> {
     pairs
         .iter()
         .map(|(k, v)| (k.to_string(), v.to_string()))
@@ -72,7 +72,11 @@ fn vars(pairs: &[(&str, &str)]) -> HashMap<String, String> {
 }
 
 /// Send `text` through `link` to the echo target `echo`, and read it back.
-async fn round_trip(link: &Link, echo: std::net::SocketAddr, text: &[u8]) -> Result<(), Failure> {
+pub(super) async fn round_trip(
+    link: &Link,
+    echo: std::net::SocketAddr,
+    text: &[u8],
+) -> Result<(), Failure> {
     let way = link.way.clone().expect("the link has a way");
     let target = Target::new("127.0.0.1", echo.port());
     let mut io = way

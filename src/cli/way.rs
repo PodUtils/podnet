@@ -185,6 +185,9 @@ fn warp_refusal(label: &str) -> String {
 fn road_refusal(label: &str, road: &str) -> String {
     let what = match road {
         "https" => "an HTTPS proxy (TLS to the proxy, then CONNECT)",
+        "vless" => "a VLESS server",
+        "shadowsocks" => "a Shadowsocks server",
+        "wisp" => "a Wisp server",
         _ => "a wstunnel server",
     };
     format!(

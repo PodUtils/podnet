@@ -18,6 +18,9 @@ one form for each command. The same specs are used by `--egress`, `podnet forwar
 | `devtunnel` | `devtunnel://NAME`, `devtunnel://ID.CLUSTER` | A stream to a port of the host of a Microsoft Dev Tunnels tunnel, through its relay. The target host is `127.0.0.1`. The token comes from `PODNET_DEVTUNNEL_TOKEN_FILE` or `PODNET_DEVTUNNEL_ACCESS_TOKEN_FILE` (or none with `PODNET_DEVTUNNEL_ANONYMOUS=1`), never from the spec ([networks.md](networks.md)). | TCP |
 | `https` | `https://[USER@]HOST[:PORT]` | A forward proxy over TLS: TLS to the proxy, then CONNECT on HTTP/2 or HTTP/1.1 (`via` of `pod-egress`). The credentials come from `PODNET_HTTPS_PROXY_AUTH_FILE` or `PODNET_HTTPS_PROXY_AUTH`, never from the spec ([networks.md](networks.md), "A proxy over TLS"). | TCP |
 | `wstunnel` | `wstunnel:wss://HOST[:PORT]`, `wstunnel:ws://HOST[:PORT]`, `wstunnel:HOST[:PORT]` | A server of erebe/wstunnel, 9.1 to 11 (`wstunnel` of `pod-egress`). The path prefix and the credentials come from `PODNET_WSTUNNEL_SECRET_FILE` or `PODNET_WSTUNNEL_SECRET`, never from the spec ([networks.md](networks.md), "wstunnel"). | TCP |
+| `vless` | `vless://HOST:PORT?type=ws\|xhttp&security=tls\|none&sni=&host=&path=&mode=` | A VLESS server (Xray-core, sing-box) over a WebSocket or XHTTP (`vless` of `pod-egress`). The spec is the share link with no ID. The ID comes from `PODNET_VLESS_ID_FILE` or `PODNET_VLESS_ID`, never from the spec ([networks.md](networks.md), "VLESS"). | TCP |
+| `shadowsocks` | `ss://HOST:PORT` | A Shadowsocks server, in the AEAD form or Shadowsocks 2022, on TCP (`shadowsocks` of `pod-egress`). The key (`METHOD:PASSWORD`, or the `ss://` URI of the server) comes from `PODNET_SHADOWSOCKS_KEY_FILE` or `PODNET_SHADOWSOCKS_KEY`, never from the spec ([networks.md](networks.md), "Shadowsocks"). | TCP |
+| `wisp` | `wisp:wss://HOST[:PORT]/PATH`, `wisp:ws://HOST[:PORT]/PATH`, `wisp+wss://HOST[:PORT]/PATH` | Many TCP streams over one WebSocket to a Wisp server, versions 1 and 2 (`wisp` of `pod-egress`). The server takes no credential ([networks.md](networks.md), "Wisp"). | TCP |
 | chain | `SPEC over SPEC` | A network over the way of the network below it: `wg:FILE over warp` sends the UDP of WireGuard through a WARP session. The top layer comes first. The chain carries what its top layer carries ([networks.md](networks.md), "A chain of networks"). | as the top layer |
 | `peer` | `peer:FINGERPRINT/SERVICE` | One stream to a service of a peer, over a link that a running `podnet link connect` or `link listen` instance holds ([link.md](link.md)). A peer way: it meets a peer and dials no destination. | TCP |
 
@@ -35,6 +38,8 @@ one form for each command. The same specs are used by `--egress`, `podnet forwar
   with `podnet forward -L ... --network SPEC`, a `networks:` entry of a router file, or `podnet net doctor --network SPEC`.
   `--egress https://...` and `--egress wstunnel:...` give one line that says that the network is not a proxy of the
   process or a hop of a pod. The proxy of the process does not take `https://` ([proxies.md](proxies.md)).
+* `vless://`, `ss://` and `wisp:` open their own streams through a VLESS, a Shadowsocks or a Wisp server. Use them as
+  `https://` and `wstunnel:`. `--egress` gives one line that names the network and `--network`.
 * `warp` and `warp:identity=FILE` are networks of the registry: TCP and UDP through a WARP session, with names
   resolved inside the tunnel ([router.md](router.md), "WARP as a member"). Use them with
   `podnet forward --network warp` or in a `networks:` entry of a router file. `--egress warp` gives one line
@@ -107,6 +112,32 @@ is in [networks.md](networks.md).
 | The protocol of wstunnel | the WebSocket transport of erebe/wstunnel 9.1 to 11 (its token, its path prefix) | 2026-11-26 |
 | The client | `pod-egress` of PodUtils/podcrates (features `via` and `wstunnel`), at the tag of `Cargo.toml` | 2026-11-26 |
 | The test servers | stand-ins on the loopback (`src/networks/road_stand.rs`); the runs against wstunnel and Caddy are tests of `pod-egress` | 2026-11-26 |
+
+## VLESS, Shadowsocks and Wisp
+
+```sh
+export PODNET_VLESS_ID_FILE=/etc/podnet/vless-id   # the UUID of the user
+podnet forward -L 127.0.0.1:2222=code.example:22 --network 'vless://v.example:443?type=ws&security=tls&path=/ws'
+
+export PODNET_SHADOWSOCKS_KEY_FILE=/etc/podnet/ss-key   # one line: METHOD:PASSWORD
+podnet forward -L 127.0.0.1:2222=code.example:22 --network ss://ss.example:8388
+
+podnet forward -L 127.0.0.1:2222=code.example:22 --network wisp:wss://w.example/wisp/
+```
+
+The three are roads of `pod-egress` (PodUtils/podcrates); podnet holds no code of them. A spec holds no secret: an
+ID or a key in a spec is a usage error (exit 64) that does not repeat it. A missing or bad secret is a usage error
+that names the variable. `up` proves the reach of the server (and its certificate over TLS); for Wisp it opens the
+connection. A fault names the hop (`the VLESS server`, `the Shadowsocks server`, `the Wisp server`). Each form,
+each setting and each fault is in [networks.md](networks.md).
+
+| Item | Value | Checked |
+| --- | --- | --- |
+| The protocol of VLESS | the request and the answer of Xray-core (`proxy/vless/encoding`), over a WebSocket or XHTTP | 2026-11-26 |
+| The protocol of Shadowsocks | the AEAD form of shadowsocks.org and SIP022 (Shadowsocks 2022); the URI of SIP002 | 2026-11-26 |
+| The protocol of Wisp | the Wisp protocol of Mercury Workshop, versions 1 and 2 (`protocol.md`) | 2026-11-26 |
+| The client | `pod-egress` of PodUtils/podcrates (features `vless`, `shadowsocks` and `wisp`), at the tag of `Cargo.toml` | 2026-11-26 |
+| The test servers | stand-ins on the loopback (`src/networks/servers_stand.rs`); the published vectors of each protocol are tests of `pod-egress` | 2026-11-26 |
 
 ## TURN servers
 

@@ -2,7 +2,8 @@
 
 This page gives `podnet net`: the virtual network, Tailscale, NetBird, WireGuard and the passwd shim. The design
 of the virtual network is in [virtual-network.md](virtual-network.md). The specs `tailscale:`, `netbird:`,
-`wg:`, `turn://`, `devtunnel://`, `https://` and `wstunnel:` are networks of the registry ([egress.md](egress.md)).
+`wg:`, `turn://`, `devtunnel://`, `https://`, `wstunnel:`, `vless://`, `ss://` and `wisp:` are networks of the
+registry ([egress.md](egress.md)).
 
 | Command | Function |
 | --- | --- |
@@ -421,6 +422,107 @@ names the target. The server dials the target before it answers. podnet has no c
 * Tests use a stand-in wstunnel server on the loopback with a CA of the test (`src/networks/road_stand.rs`). The
   run against the binary of wstunnel is a test of `pod-egress`.
 * Not in the network: the HTTP/2 transport of wstunnel, a reverse tunnel, and UDP.
+
+## VLESS: `vless://HOST:PORT?type=ws&security=tls&path=/PATH`
+
+```sh
+printf '%s\n' "$VLESS_UUID" > /etc/podnet/vless-id   # the ID of the user, a UUID
+export PODNET_VLESS_ID_FILE=/etc/podnet/vless-id
+podnet forward -L 127.0.0.1:2222=code.example:22 --network 'vless://v.example:443?type=ws&security=tls&path=/ws'
+```
+
+A host that reaches only HTTPS can use a VLESS server (Xray-core, sing-box) as a network. The spec is the share link
+of Xray-core with no ID. Each stream opens a WebSocket (`type=ws`) or XHTTP requests (`type=xhttp`, on HTTP/2, or
+on HTTP/1.1 with two connections) to the server. VLESS's request names the target, and the server dials it. podnet
+has no code of this road: it is `vless` of `pod-egress` (PodUtils/podcrates).
+
+* The query takes `type` (`ws` or `xhttp`), `security` (`tls` or `none`), `sni`, `host`, `path`, `mode` (of XHTTP:
+  `auto`, `packet-up`, `stream-up` or `stream-one`), `alpn` and `extra`. A setting that the client does not speak
+  (`type=tcp`, the default of a share link; `security=reality`; a `flow`; an `encryption` other than `none`) is a
+  usage error (exit 64) that names it.
+* The ID is a setting, not a part of the spec. `PODNET_VLESS_ID_FILE` is a file with the ID: a UUID, or a word of 1
+  to 30 bytes, which Xray-core maps to a UUID. `PODNET_VLESS_ID` is the same text (give one of them). The ID is
+  required. An ID in the spec (`vless://ID@HOST`), a missing ID and a bad ID are usage errors (exit 64) that name
+  the variable and do not repeat the ID.
+* A network `NAME` of a router file reads the variables with the suffix `_NAME` when one of them is set.
+* The connections to the server use the way out of the process, or the way below the network. The certificate is
+  checked for the `sni` of the link (else its host) with the roots of podnet (`--ca-file`).
+* `up` makes one connection to the server (TLS for `security=tls`). A fault starts with the label and names the
+  hop: `vless://v.example:443/ws: the VLESS server: ...`.
+* The network does not wait for the answer of the server: a client can speak first. A server that refuses the ID
+  ends each stream before its answer. The read of the stream then fails with the words `the server ended the
+  session before VLESS's answer: it refused the ID, or it could not reach the target`.
+* The status of the link has the scheme, the label (`vless://HOST:PORT/PATH`), the transport, `tls` and the form of
+  the ID (`file` or `variable`). It has no ID.
+* `podnet net doctor --network SPEC` adds the row of the network: `ok` when the server takes the connection, `fail`
+  with the hop when it does not. The row holds no ID.
+* Tests use a stand-in VLESS server on the loopback (`src/networks/servers_stand.rs`,
+  `src/networks/servers/tests.rs`, `tests/road_network.rs`).
+* Not in the network: early data (0-RTT), UDP, and the VMess and Trojan protocols.
+
+## Shadowsocks: `ss://HOST:PORT`
+
+```sh
+printf 'aes-256-gcm:%s\n' "$SS_PASSWORD" > /etc/podnet/ss-key   # METHOD:PASSWORD
+export PODNET_SHADOWSOCKS_KEY_FILE=/etc/podnet/ss-key
+podnet forward -L 127.0.0.1:2222=code.example:22 --network ss://ss.example:8388
+```
+
+A host whose proxy is a Shadowsocks server can use it as a network. Each stream opens a TCP connection to the server.
+The address of the target goes in the first chunk, and the server dials it. podnet has no code of this road: it is
+`shadowsocks` of `pod-egress` (PodUtils/podcrates).
+
+* The spec is `ss://HOST:PORT`, with no key, no path, no query and no tag. A bad spec is a usage error (exit 64)
+  that gives the form and does not repeat the spec: a whole `ss://` URI holds the password.
+* The key is a setting, not a part of the spec. `PODNET_SHADOWSOCKS_KEY_FILE` is a file whose one line is
+  `METHOD:PASSWORD`, or the `ss://` URI of the server (SIP002, as an access key gives it), which must name the host
+  and the port of the spec. `PODNET_SHADOWSOCKS_KEY` is the same text (give one of them). The key is required.
+* The methods are `chacha20-ietf-poly1305`, `aes-256-gcm`, `aes-128-gcm` (the AEAD form), and
+  `2022-blake3-aes-128-gcm`, `2022-blake3-aes-256-gcm` and `2022-blake3-chacha20-poly1305` (Shadowsocks 2022, whose
+  password is a key in base64). A plugin and a key of several users (`iPSK:uPSK`) are refused by name. A missing or
+  bad key is a usage error (exit 64) that names the variable and does not repeat the key.
+* A network `NAME` of a router file reads the variables with the suffix `_NAME` when one of them is set.
+* The TCP connection to the server uses the way out of the process, or the way below the network.
+* `up` makes one TCP connection to the server. A fault starts with the spec and names the hop:
+  `ss://ss.example:8388: the Shadowsocks server: ...`.
+* The network does not wait for the answer of the server: a client can speak first. A server that does not take
+  the key says nothing and ends the stream.
+* The status of the link has the scheme, the spec, the method and the form of the key (`file` or `variable`). It has
+  no password.
+* `podnet net doctor --network ss://HOST:PORT` adds the row of the network: `ok` when the server takes the TCP
+  connection, `fail` with the hop when it does not. The row holds no key.
+* Tests use a stand-in Shadowsocks server of the AEAD form on the loopback (`src/networks/servers_stand.rs`).
+* Not in the network: the WebSocket of an Outline server, UDP, and a plugin.
+
+## Wisp: `wisp:wss://HOST[:PORT]/PATH`
+
+```sh
+podnet forward -L 127.0.0.1:2222=code.example:22 --network wisp:wss://w.example/wisp/
+```
+
+A host that reaches only a WebSocket can use a Wisp server (the Wisp protocol of Mercury Workshop, versions 1 and
+2) as a network. The streams go over one WebSocket to the server. Each stream names its target, and the server
+dials it. podnet has no code of this road: it is `wisp` of `pod-egress` (PodUtils/podcrates).
+
+* `wisp:wss://HOST[:PORT]/PATH` is TLS (default port 443). `wisp:ws://HOST[:PORT]/PATH` has no TLS (default port
+  80). `wisp:HOST[:PORT]/PATH` is the same as `wss://`. `wisp+wss://` and `wisp+ws://` (the form of a forwarder
+  template) are the same. The URL takes no user and no password: a usage error (exit 64). `wisp:PORT` is still the
+  SOCKS5 hop of a host named `wisp`.
+* The server takes no credential of this client. A server that requires a password or a key is refused at `up`.
+* The connection to the server uses the way out of the process, or the way below the network. The certificate is
+  checked with the roots of podnet (`--ca-file`).
+* `up` opens the connection: the WebSocket and the opening of Wisp. A fault starts with the label and names the hop:
+  `wisp:wss://w.example/wisp/: the Wisp server: ...`. The message of the day of the server goes to the log.
+* A target that the server cannot reach fails the stream with the reason of the server: `the Wisp server closed the
+  stream: 0x44, the destination refused the connection`. A server of version 1 does not confirm a stream: a stream
+  that the server does not close in 3 s is taken as open.
+* When the server closed the connection, the next stream opens a new connection, one time.
+* The status of the link has the scheme, the label, `tls`, the version of Wisp and `confirms` (the server confirms
+  each stream).
+* `podnet net doctor --network SPEC` adds the row of the network: `ok` when the connection opens, `fail` with the
+  hop when it does not.
+* Tests use a stand-in Wisp server of version 2 on the loopback (`src/networks/servers_stand.rs`).
+* Not in the network: UDP streams, and the password and key extensions of Wisp version 2.
 
 ## A user with no passwd entry
 

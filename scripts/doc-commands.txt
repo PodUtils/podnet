@@ -29,6 +29,7 @@ docs/doctor.md cc3c66599e live agent up starts WARP if needed and a quick tunnel
 
 docs/egress.md 2479000031 live-manual each line needs a proxy, the relay or a tunnel; proxy-a and host are placeholders
 docs/egress.md a20cb97f5d live-manual needs an HTTPS proxy and a wstunnel server (proxy.example and wst.example are placeholders)
+docs/egress.md 88d972f94f live-manual needs a VLESS, a Shadowsocks and a Wisp server (v.example, ss.example and w.example are placeholders) and their secrets
 
 docs/forward.md 3a11697f91 skip a reference list: foreground forwards to placeholder hosts (db.internal, host)
 docs/forward.md 675510e990 skip a template: FINGERPRINT is a placeholder; needs a second host
@@ -77,6 +78,9 @@ docs/networks.md bb246c305e live-manual needs a TURN server (turn.example is a p
 docs/networks.md 6e64e9e40c live-manual needs Microsoft Dev Tunnels and a token
 docs/networks.md 5f9b11850c live-manual needs a forward proxy over TLS (proxy.example is a placeholder)
 docs/networks.md d0a11de310 live-manual needs a wstunnel server (wst.example is a placeholder) and its path prefix
+docs/networks.md f7931a07ac live-manual needs a VLESS server (v.example is a placeholder) and its ID in VLESS_UUID
+docs/networks.md 033a5337fd live-manual needs a Wisp server (w.example is a placeholder)
+docs/networks.md 7eb54413e9 live-manual needs a Shadowsocks server (ss.example is a placeholder) and its password in SS_PASSWORD
 docs/networks.md 36f396629b run  [needs ssh-keygen] the passwd shim, then ssh-keygen writes a key
 
 docs/pods.md 6fab913969 live-manual each line needs a proxy of the user or the internet; proxy:3128, /run/proxy.sock and ./static-binary are placeholders

@@ -8,7 +8,9 @@
 //! a Dev Tunnels relay), `turn://HOST[:PORT]` and
 //! `turns://HOST[:PORT]` (UDP through a TURN server), `https://HOST[:PORT]`
 //! (TCP through a proxy over TLS), `wstunnel:wss://HOST[:PORT]` (TCP through
-//! a wstunnel server), the relay (`relay`,
+//! a wstunnel server), `vless://HOST:PORT?...`, `ss://HOST:PORT` and
+//! `wisp:wss://HOST/PATH` (TCP through a VLESS, a Shadowsocks or a Wisp
+//! server, `servers.rs`), the relay (`relay`,
 //! `relay:URL`), or a chain of these (`TOP over BELOW`, [`chain`]).
 //! [`networks`] is the table of the
 //! networks of this build: a static table in the binary, with no
@@ -35,7 +37,9 @@ mod devtunnel;
 mod netbird;
 mod peer;
 mod secret;
+mod servers;
 pub use netbird::{greeting as netbird_greeting, port_from_env as netbird_port};
+pub use servers::{SHADOWSOCKS_KEY, SHADOWSOCKS_KEY_FILE, VLESS_ID, VLESS_ID_FILE};
 mod tailscale;
 mod turn;
 mod turn_socket;
@@ -59,7 +63,7 @@ pub struct Row {
     pub caps: Caps,
 }
 
-const ROWS: [Row; 13] = [
+const ROWS: [Row; 16] = [
     Row {
         scheme: "direct",
         forms: &["direct"],
@@ -130,6 +134,24 @@ const ROWS: [Row; 13] = [
         caps: Caps::EGRESS_TCP,
     },
     Row {
+        scheme: "vless",
+        forms: &["vless://HOST:PORT?type=ws|xhttp&security=tls|none&sni=&host=&path=&mode="],
+        about: "TCP through a VLESS server (Xray-core, sing-box) over a WebSocket or XHTTP; the ID comes from PODNET_VLESS_ID_FILE",
+        caps: Caps::EGRESS_TCP,
+    },
+    Row {
+        scheme: "shadowsocks",
+        forms: &["ss://HOST:PORT"],
+        about: "TCP through a Shadowsocks server (the AEAD form or Shadowsocks 2022); the key comes from PODNET_SHADOWSOCKS_KEY_FILE",
+        caps: Caps::EGRESS_TCP,
+    },
+    Row {
+        scheme: "wisp",
+        forms: &["wisp:wss://HOST[:PORT]/PATH", "wisp:ws://HOST[:PORT]/PATH", "wisp+wss://HOST[:PORT]/PATH"],
+        about: "TCP streams over one WebSocket to a Wisp server (versions 1 and 2)",
+        caps: Caps::EGRESS_TCP,
+    },
+    Row {
         scheme: "warp",
         forms: &["warp", "warp:identity=FILE"],
         about: "TCP and UDP through a WARP session (MASQUE), with names resolved inside the tunnel; the device is kept in the identity file, else in warp.json of the state directory of the network",
@@ -179,6 +201,8 @@ enum Kind {
     Via(via::Spec),
     /// A wstunnel server (T-126).
     Wstunnel(wstunnel::Spec),
+    /// A VLESS, a Shadowsocks or a Wisp server (T-127).
+    Server(servers::Spec),
     /// A WARP session (T-097, T-180).
     Warp(warp::Spec),
     /// A service of the peer with this fingerprint (T-266).
@@ -272,6 +296,9 @@ fn kind(spec: &str) -> Result<Kind, Failure> {
     if wstunnel::is_wstunnel(spec) {
         return wstunnel::parse(spec).map(Kind::Wstunnel);
     }
+    if let Some(road) = servers::parse(spec) {
+        return road.map(Kind::Server);
+    }
     if let Some(rest) = spec.strip_prefix("peer:") {
         // `peer:PORT` is the SOCKS hop of a host named peer, as it was.
         if rest.parse::<u16>().is_err() {
@@ -359,6 +386,7 @@ impl SpecNetwork {
             Kind::Devtunnel(spec) => spec.label(),
             Kind::Via(spec) => spec.label(),
             Kind::Wstunnel(spec) => spec.label(),
+            Kind::Server(spec) => spec.label(),
             Kind::Warp(spec) => spec.label(),
             Kind::Chain(layers) => chain::label(layers),
             _ => redacted(&self.spec),
@@ -401,11 +429,13 @@ impl SpecNetwork {
     }
 
     /// The road of `pod-egress` that the spec names: `https` for
-    /// `https://HOST`, `wstunnel` for `wstunnel:URL`.
+    /// `https://HOST`, `wstunnel` for `wstunnel:URL`, `vless`,
+    /// `shadowsocks` and `wisp`.
     pub fn road(&self) -> Option<&'static str> {
-        match self.kind {
+        match &self.kind {
             Kind::Via(_) => Some("https"),
             Kind::Wstunnel(_) => Some("wstunnel"),
+            Kind::Server(spec) => Some(spec.scheme()),
             _ => None,
         }
     }
@@ -484,9 +514,10 @@ impl SpecNetwork {
             | Kind::Devtunnel(_)
             | Kind::Via(_)
             | Kind::Wstunnel(_)
+            | Kind::Server(_)
             | Kind::Warp(_)
             | Kind::Chain(_) => {
-                unreachable!("wg:FILE, turn://, devtunnel://, https://, wstunnel:, warp and a chain come up in `up`")
+                unreachable!("wg:FILE, turn://, devtunnel://, the roads of pod-egress, warp and a chain come up in `up`")
             }
             Kind::Peer {
                 fingerprint,
@@ -518,6 +549,7 @@ impl Network for SpecNetwork {
             Kind::Devtunnel(_) => "devtunnel",
             Kind::Via(_) => "https",
             Kind::Wstunnel(_) => "wstunnel",
+            Kind::Server(ref spec) => spec.scheme(),
             Kind::Warp(_) => "warp",
             Kind::Peer { .. } => "peer",
             Kind::Chain(_) => "chain",
@@ -575,6 +607,10 @@ impl Network for SpecNetwork {
             if let Kind::Wstunnel(spec) = &self.kind {
                 let settings = wstunnel::settings(&get, ctx.name.as_deref())?;
                 return Ok(wstunnel::up(spec, settings, ctx.below.as_ref()).await?);
+            }
+            if let Kind::Server(spec) = &self.kind {
+                let settings = spec.settings(&get, ctx.name.as_deref())?;
+                return Ok(spec.up(settings, ctx.below.as_ref()).await?);
             }
             if let Some(below) = &ctx.below {
                 return Err(Failure::new(
@@ -663,6 +699,7 @@ impl Network for SpecNetwork {
                 target: spec.target(),
                 tls: spec.server.tls(),
             }],
+            Kind::Server(spec) => vec![spec.check()],
             Kind::Chain(layers) => layers.iter().flat_map(|l| l.checks()).collect(),
             Kind::Netbird(port) => vec![Check {
                 name: "netbird".into(),
@@ -686,6 +723,8 @@ impl Network for SpecNetwork {
 mod devtunnel_tests;
 #[cfg(test)]
 mod road_stand;
+#[cfg(test)]
+mod servers_stand;
 #[cfg(test)]
 mod tailscale_tests;
 #[cfg(test)]

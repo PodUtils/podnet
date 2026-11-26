@@ -2223,7 +2223,7 @@ device that a service user saved. A second device spends a registration (`docs/d
 
 - src/warp/mod.rs:885-892 at `9c1fc4b` (owner and mode checks, bare `bail!`); readers: `load` (`:357`) and
   `src/warp/export.rs:68`. `register_or_load` (`src/warp/mod.rs:421-423`) refuses and does not write over the file.
-- `crates/podnet-core/src/state.rs:69-127` has the model. `src/manual/facts.rs:168` lists `PODNET_FOREIGN_HOME`.
+- `crates/podnet-core/src/state.rs:69-127` has the model. `src/manual/facts.rs:172` lists `PODNET_FOREIGN_HOME`.
 - `warp_client_inner` wraps errors in `Fault::Unavailable` (`src/cli/cmd/warp/client.rs:119-144`).
 - Not measured: two real users (a registration is spent).
 
@@ -2626,7 +2626,7 @@ python3 scripts/check-size.py
 ## Premise
 
 - Printed at `src/cli/cmd/net/mod.rs:318-319`. `tests/cli/main.rs` has `doctor_tells_listen_from_bind`.
-- `docs/networks.md:40-42` uses `net switch --listen tcp://` as its example.
+- `docs/networks.md:41-43` uses `net switch --listen tcp://` as its example.
 
 ## Approach
 
@@ -7421,7 +7421,7 @@ documented commands" of the job `test` of `ci.yml`; set the entry `done` when th
 
 ## Done
 
-2026-11-15, eeac027 (the fix). ci 43774698575 on f2d96fc ran the documented block `docs/networks.md:434` (`net passwd-shim`,
+2026-11-15, eeac027 (the fix). ci 43774698575 on f2d96fc ran the documented block `docs/networks.md:536` (`net passwd-shim`,
 then `ssh-keygen`) in the step "The documented commands": `pass docs/networks.md:337`; `doc-commands: 4 passed, 0 failed,
 0 not run`.
 
@@ -13616,7 +13616,7 @@ ERROR: ld.so: object '/tmp/podnet-vnet/libpodnet-vnet.so' from LD_PRELOAD cannot
 ```
 
 `mount` says `tmpfs on /tmp type tmpfs (rw,nosuid,nodev,noexec,...)`. Without `--out`, `podnet net shim` picks
-`~/.local/state/podnet/podnet-vnet/` and works. The promise: `docs/networks.md:27` (the example), and
+`~/.local/state/podnet/podnet-vnet/` and works. The promise: `docs/networks.md:28` (the example), and
 `docs/target-environment.md:147`, "The temporary directory is `noexec` | A shim goes to the first directory that is
 writable and not `noexec`". The documented example writes the shim to a `noexec` directory. podnet gives no warning and
 no error, and the printed export cannot load. An explicit `--out` is not checked for `noexec`.
@@ -13636,7 +13636,7 @@ no error, and the printed export cannot load. An explicit `--out` is not checked
    names is an error (exit 78, a configuration that cannot be used), one line: `/tmp/podnet-vnet is on a noexec file
    system: a shim cannot load from it; give another --out, or none (podnet uses DIR)`, with the directory that
    `exec_dir` would take. A fallback with a warning would hide the path that the user wrote into `LD_PRELOAD`.
-2. The example of `docs/networks.md:27` uses no `--out /tmp/...`: it uses `--out "$HOME/.local/share/podnet-vnet"` or no
+2. The example of `docs/networks.md:28` uses no `--out /tmp/...`: it uses `--out "$HOME/.local/share/podnet-vnet"` or no
    `--out`. The sentence of `docs/target-environment.md:147` says that an explicit `--out` is checked.
 3. One table-driven test over the commands (`net shim`, `net socksify`, `net ts-shims`, `net passwd-shim`): an
    explicit `--out` on a `noexec` directory gives exit 78 and the line; on a normal directory it works. A test cannot
@@ -13885,7 +13885,7 @@ the relay leg works gives exit 0.
   where only `http2+relay` works gives exit 0, and the help (`src/cli/mod.rs:292`) lists three legs only.
 - Read: the exit 1 of `doctor` is in the help, in `docs/doctor.md`, in the research list
   (`docs/research/podnet/parity-checklist.md`), and in the lane (`scripts/lab-lane.sh`, the case
-  `proxy-doctor` runs `doctor` through a proxy that refuses). The manual row of 69 (`src/manual/facts.rs:208`) and `docs/cli.md:139` name "no edge
+  `proxy-doctor` runs `doctor` through a proxy that refuses). The manual row of 69 (`src/manual/facts.rs:212`) and `docs/cli.md:139` name "no edge
   leg worked" for the commands that start a tunnel (`tunnel`, `warp`); `podnet tunnel` with no quick-tunnel service gives 69 (#695).
 - The call (the owner may rule otherwise; `TODO/PROGRESS.md`, Calls made without a ruling): keep the exit 1 of `doctor`
   and `bench`. A command whose job is to report that something is not available has failed in its check; 69 is for the
@@ -13894,7 +13894,7 @@ the relay leg works gives exit 0.
 
 ## Approach
 
-1. `src/manual/facts.rs:208` and `docs/cli.md:139` say that "no edge leg worked" is 69 for `tunnel`, `warp` and the
+1. `src/manual/facts.rs:212` and `docs/cli.md:139` say that "no edge leg worked" is 69 for `tunnel`, `warp` and the
    commands that start a session, and that `doctor` and `bench` give 1 when no leg or no request worked. The row of 1
    names them. `docs/exit-codes.md` gets the same sentence.
 2. `podnet doctor --help` (`src/cli/mod.rs:292`) and `docs/doctor.md:46` name the four legs (`quic`, `http2`,

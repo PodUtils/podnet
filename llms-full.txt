@@ -64,8 +64,8 @@ SYNOPSIS
     forward  Forward local ports through a network: -L LISTEN=HOST:PORT (TCP,
              or UDP with udp:LISTEN) and a DNS door with --dns. --network SPEC
              is direct, a proxy, the relay, a tailnet, wg:FILE, turn://HOST for
-             UDP, devtunnel://TUNNEL, https://HOST (a proxy over TLS),
-             wstunnel:wss://HOST or warp
+             UDP, devtunnel://TUNNEL, warp, or a server (https://, wstunnel:,
+             vless://, ss://, wisp:)
     route    A router of networks, groups, doors and guest wires from a config
              file (--config FILE), with health probes and --detach. A guest
              uses the router as its gateway
@@ -2623,8 +2623,8 @@ podnet expose
 podnet forward
   Forward local ports through a network: -L LISTEN=HOST:PORT (TCP, or UDP with
   udp:LISTEN) and a DNS door with --dns. --network SPEC is direct, a proxy, the
-  relay, a tailnet, wg:FILE, turn://HOST for UDP, devtunnel://TUNNEL,
-  https://HOST (a proxy over TLS), wstunnel:wss://HOST or warp.
+  relay, a tailnet, wg:FILE, turn://HOST for UDP, devtunnel://TUNNEL, warp, or
+  a server (https://, wstunnel:, vless://, ss://, wisp:).
 
   Usage: podnet forward [OPTIONS]
 
@@ -2670,11 +2670,15 @@ podnet forward
         over TLS, by CONNECT; the credentials come from
         PODNET_HTTPS_PROXY_AUTH_FILE), or wstunnel:wss://HOST[:PORT] (TCP
         through a wstunnel server; the secret comes from
-        PODNET_WSTUNNEL_SECRET_FILE), or warp or warp:identity=FILE (TCP and
-        UDP through a WARP session; names resolve inside the tunnel; the device
-        is kept in FILE, else in the default identity file of podnet warp). A
-        SOCKS5 or HTTP proxy carries no UDP. Default: the way out of the
-        process (--proxy, the variables, else direct).
+        PODNET_WSTUNNEL_SECRET_FILE), or vless://HOST:PORT?type=ws&security=tls
+        (TCP through a VLESS server; the ID comes from PODNET_VLESS_ID_FILE),
+        or ss://HOST:PORT (TCP through a Shadowsocks server; the key comes from
+        PODNET_SHADOWSOCKS_KEY_FILE), or wisp:wss://HOST/PATH (TCP through a
+        Wisp server), or warp or warp:identity=FILE (TCP and UDP through a WARP
+        session; names resolve inside the tunnel; the device is kept in FILE,
+        else in the default identity file of podnet warp). A SOCKS5 or HTTP
+        proxy carries no UDP. Default: the way out of the process (--proxy, the
+        variables, else direct).
     --run-for SECONDS
         Stop after this many seconds.
     --ca-file PATH
@@ -14279,6 +14283,28 @@ ENVIRONMENT
       error (exit 64) that names the variable and the number of the line. Used
       by: the network wstunnel:wss://HOST[:PORT] (forward --network, a
       networks: entry of route, net doctor --network).
+  PODNET_VLESS_ID_FILE, PODNET_VLESS_ID
+      The ID of the user of a VLESS server: the text of the file in
+      PODNET_VLESS_ID_FILE, else the value of PODNET_VLESS_ID (give one of
+      them). The ID is a UUID, or a word of 1 to 30 bytes, which Xray-core maps
+      to a UUID. The ID is required. A network NAME of a router file reads the
+      variables with the suffix _NAME when one of them is set. A spec holds no
+      ID, and no ID is in a log line, an error or --json. A missing or bad ID
+      is a usage error (exit 64) that names the variable. Used by: the network
+      vless://HOST:PORT?... (forward --network, a networks: entry of route, net
+      doctor --network).
+  PODNET_SHADOWSOCKS_KEY_FILE, PODNET_SHADOWSOCKS_KEY
+      The key of a Shadowsocks server: the one line of the file in
+      PODNET_SHADOWSOCKS_KEY_FILE, else the value of PODNET_SHADOWSOCKS_KEY
+      (give one of them). The line is METHOD:PASSWORD, or the ss:// URI of the
+      server (SIP002), which must name the host and the port of the spec. The
+      methods are chacha20-ietf-poly1305, aes-256-gcm, aes-128-gcm and the
+      three of Shadowsocks 2022. The key is required. A network NAME of a
+      router file reads the variables with the suffix _NAME when one of them is
+      set. A spec holds no key, and no key is in a log line, an error or
+      --json. A missing or bad key is a usage error (exit 64) that names the
+      variable. Used by: the network ss://HOST:PORT (forward --network, a
+      networks: entry of route, net doctor --network).
   PODNET_WARP_DEVICE_NAME, PODNET_WARP_DEVICE_MODEL, PODNET_WARP_DEVICE_LOCALE
       The value of --device-name, --device-model and --device-locale: what a
       new device declares at its registration (a name of 1 to 64 characters, a
@@ -15022,7 +15048,7 @@ podnet man                                      # the manual
 | Relays | `relay pair`, `node`, `connect`, `--resume`, `--seal`, `ssh-relay` | Inbound TCP to a host with outbound HTTPS only, sessions past the limits of the relay (`--resume`), sealed end to end (`--seal`); an SSH forward relay. | [relay](https://github.com/PodUtils/podnet/blob/main/docs/relay.md) |
 | Link | `link listen`, `dial`, `connect`, `status`, `mesh`, `close`, `carriers`, `cover`, `peer:FP/SERVICE` | A link between two installs over a carrier (unix socket, memory; TCP with TLS, WebSocket, HTTP/2, QUIC, UDP with KCP, HTTP/1.1 polls, DNS, S3 and ICMP behind build features): each end proves its Ed25519 key, and an allow list (default deny) admits the peers. Services at a peer: `raw`, `socks5`, `http`, `exec:` and `exec-status:` (the exit status goes to `link dial --status`). A local SOCKS5 door to a peer (`link dial --service socks5 --listen`, `--resolve-at peer\|local`). Names for live links, query keys, chains of `--egress` before the carrier, link groups, a mesh (`--announce`, `link mesh`) and a control socket. `forward -L PORT=peer:FP/SERVICE` reaches a service of a peer. A C interface (`include/podnet.h`, a shared and a static library from `crates/podnet-capi`). | [link](https://github.com/PodUtils/podnet/blob/main/docs/link.md) |
 | Offline | `offline spool`, `discover`, `bundle`, `capture`, `pair`, `replica`; carriers `serial` and `hf` | A store and forward line for a host with no network: a spool that survives a kill, mDNS discovery with a signed record, a bundle and its delta, a capture merged with its secret redacted, a pairing code, a replication log that converges; AX.25 over a serial line and an ARDOP or VARA modem. | [offline](https://github.com/PodUtils/podnet/blob/main/docs/offline.md) |
-| Networks and `--egress` | `--egress`, `--proxy`, `--resolve` | One spec for each way out: direct, proxy URL, relay, `tailscale:`, `netbird:`, `wg:`, `devtunnel:` (a Dev Tunnels relay), `turn:` (UDP), `https:` (a proxy over TLS), `wstunnel:` (a wstunnel server), `unix:`, `warp` and `warp:identity=FILE` (TCP and UDP through a WARP session, for `route` and `forward --network`), and a chain `TOP over BELOW` (`wg:FILE over warp`). | [egress](https://github.com/PodUtils/podnet/blob/main/docs/egress.md), [proxies](https://github.com/PodUtils/podnet/blob/main/docs/proxies.md) |
+| Networks and `--egress` | `--egress`, `--proxy`, `--resolve` | One spec for each way out: direct, proxy URL, relay, `tailscale:`, `netbird:`, `wg:`, `devtunnel:` (a Dev Tunnels relay), `turn:` (UDP), `https:` (a proxy over TLS), `wstunnel:` (a wstunnel server), `vless://`, `ss://` and `wisp:` (a VLESS, a Shadowsocks or a Wisp server), `unix:`, `warp` and `warp:identity=FILE` (TCP and UDP through a WARP session, for `route` and `forward --network`), and a chain `TOP over BELOW` (`wg:FILE over warp`). | [egress](https://github.com/PodUtils/podnet/blob/main/docs/egress.md), [proxies](https://github.com/PodUtils/podnet/blob/main/docs/proxies.md) |
 | Background | `--detach`, `ps`, `logs`, `wait`, `stop`, `autostart` | Run a command in the background, restart it, start it at boot. | [background](https://github.com/PodUtils/podnet/blob/main/docs/background.md) |
 | Checks | `doctor`, `doctor --agent`, `doctor --shape`, `status`, `ports`, `components`, `bench`, `bug-report`, `agent up` | Test the host, the path to the edge and a way out. | [doctor](https://github.com/PodUtils/podnet/blob/main/docs/doctor.md) |
 | Update | `update` | Replace the binary after a check of the signature. | [install](https://github.com/PodUtils/podnet/blob/main/docs/install.md) |
@@ -17045,7 +17071,8 @@ run, the line of `--name-backend` does not give `--backend netns` as a next step
 
 This page gives `podnet net`: the virtual network, Tailscale, NetBird, WireGuard and the passwd shim. The design
 of the virtual network is in [virtual-network.md](virtual-network.md). The specs `tailscale:`, `netbird:`,
-`wg:`, `turn://`, `devtunnel://`, `https://` and `wstunnel:` are networks of the registry ([egress.md](egress.md)).
+`wg:`, `turn://`, `devtunnel://`, `https://`, `wstunnel:`, `vless://`, `ss://` and `wisp:` are networks of the
+registry ([egress.md](egress.md)).
 
 | Command | Function |
 | --- | --- |
@@ -17464,6 +17491,107 @@ names the target. The server dials the target before it answers. podnet has no c
 * Tests use a stand-in wstunnel server on the loopback with a CA of the test (`src/networks/road_stand.rs`). The
   run against the binary of wstunnel is a test of `pod-egress`.
 * Not in the network: the HTTP/2 transport of wstunnel, a reverse tunnel, and UDP.
+
+## VLESS: `vless://HOST:PORT?type=ws&security=tls&path=/PATH`
+
+```sh
+printf '%s\n' "$VLESS_UUID" > /etc/podnet/vless-id   # the ID of the user, a UUID
+export PODNET_VLESS_ID_FILE=/etc/podnet/vless-id
+podnet forward -L 127.0.0.1:2222=code.example:22 --network 'vless://v.example:443?type=ws&security=tls&path=/ws'
+```
+
+A host that reaches only HTTPS can use a VLESS server (Xray-core, sing-box) as a network. The spec is the share link
+of Xray-core with no ID. Each stream opens a WebSocket (`type=ws`) or XHTTP requests (`type=xhttp`, on HTTP/2, or
+on HTTP/1.1 with two connections) to the server. VLESS's request names the target, and the server dials it. podnet
+has no code of this road: it is `vless` of `pod-egress` (PodUtils/podcrates).
+
+* The query takes `type` (`ws` or `xhttp`), `security` (`tls` or `none`), `sni`, `host`, `path`, `mode` (of XHTTP:
+  `auto`, `packet-up`, `stream-up` or `stream-one`), `alpn` and `extra`. A setting that the client does not speak
+  (`type=tcp`, the default of a share link; `security=reality`; a `flow`; an `encryption` other than `none`) is a
+  usage error (exit 64) that names it.
+* The ID is a setting, not a part of the spec. `PODNET_VLESS_ID_FILE` is a file with the ID: a UUID, or a word of 1
+  to 30 bytes, which Xray-core maps to a UUID. `PODNET_VLESS_ID` is the same text (give one of them). The ID is
+  required. An ID in the spec (`vless://ID@HOST`), a missing ID and a bad ID are usage errors (exit 64) that name
+  the variable and do not repeat the ID.
+* A network `NAME` of a router file reads the variables with the suffix `_NAME` when one of them is set.
+* The connections to the server use the way out of the process, or the way below the network. The certificate is
+  checked for the `sni` of the link (else its host) with the roots of podnet (`--ca-file`).
+* `up` makes one connection to the server (TLS for `security=tls`). A fault starts with the label and names the
+  hop: `vless://v.example:443/ws: the VLESS server: ...`.
+* The network does not wait for the answer of the server: a client can speak first. A server that refuses the ID
+  ends each stream before its answer. The read of the stream then fails with the words `the server ended the
+  session before VLESS's answer: it refused the ID, or it could not reach the target`.
+* The status of the link has the scheme, the label (`vless://HOST:PORT/PATH`), the transport, `tls` and the form of
+  the ID (`file` or `variable`). It has no ID.
+* `podnet net doctor --network SPEC` adds the row of the network: `ok` when the server takes the connection, `fail`
+  with the hop when it does not. The row holds no ID.
+* Tests use a stand-in VLESS server on the loopback (`src/networks/servers_stand.rs`,
+  `src/networks/servers/tests.rs`, `tests/road_network.rs`).
+* Not in the network: early data (0-RTT), UDP, and the VMess and Trojan protocols.
+
+## Shadowsocks: `ss://HOST:PORT`
+
+```sh
+printf 'aes-256-gcm:%s\n' "$SS_PASSWORD" > /etc/podnet/ss-key   # METHOD:PASSWORD
+export PODNET_SHADOWSOCKS_KEY_FILE=/etc/podnet/ss-key
+podnet forward -L 127.0.0.1:2222=code.example:22 --network ss://ss.example:8388
+```
+
+A host whose proxy is a Shadowsocks server can use it as a network. Each stream opens a TCP connection to the server.
+The address of the target goes in the first chunk, and the server dials it. podnet has no code of this road: it is
+`shadowsocks` of `pod-egress` (PodUtils/podcrates).
+
+* The spec is `ss://HOST:PORT`, with no key, no path, no query and no tag. A bad spec is a usage error (exit 64)
+  that gives the form and does not repeat the spec: a whole `ss://` URI holds the password.
+* The key is a setting, not a part of the spec. `PODNET_SHADOWSOCKS_KEY_FILE` is a file whose one line is
+  `METHOD:PASSWORD`, or the `ss://` URI of the server (SIP002, as an access key gives it), which must name the host
+  and the port of the spec. `PODNET_SHADOWSOCKS_KEY` is the same text (give one of them). The key is required.
+* The methods are `chacha20-ietf-poly1305`, `aes-256-gcm`, `aes-128-gcm` (the AEAD form), and
+  `2022-blake3-aes-128-gcm`, `2022-blake3-aes-256-gcm` and `2022-blake3-chacha20-poly1305` (Shadowsocks 2022, whose
+  password is a key in base64). A plugin and a key of several users (`iPSK:uPSK`) are refused by name. A missing or
+  bad key is a usage error (exit 64) that names the variable and does not repeat the key.
+* A network `NAME` of a router file reads the variables with the suffix `_NAME` when one of them is set.
+* The TCP connection to the server uses the way out of the process, or the way below the network.
+* `up` makes one TCP connection to the server. A fault starts with the spec and names the hop:
+  `ss://ss.example:8388: the Shadowsocks server: ...`.
+* The network does not wait for the answer of the server: a client can speak first. A server that does not take
+  the key says nothing and ends the stream.
+* The status of the link has the scheme, the spec, the method and the form of the key (`file` or `variable`). It has
+  no password.
+* `podnet net doctor --network ss://HOST:PORT` adds the row of the network: `ok` when the server takes the TCP
+  connection, `fail` with the hop when it does not. The row holds no key.
+* Tests use a stand-in Shadowsocks server of the AEAD form on the loopback (`src/networks/servers_stand.rs`).
+* Not in the network: the WebSocket of an Outline server, UDP, and a plugin.
+
+## Wisp: `wisp:wss://HOST[:PORT]/PATH`
+
+```sh
+podnet forward -L 127.0.0.1:2222=code.example:22 --network wisp:wss://w.example/wisp/
+```
+
+A host that reaches only a WebSocket can use a Wisp server (the Wisp protocol of Mercury Workshop, versions 1 and
+2) as a network. The streams go over one WebSocket to the server. Each stream names its target, and the server
+dials it. podnet has no code of this road: it is `wisp` of `pod-egress` (PodUtils/podcrates).
+
+* `wisp:wss://HOST[:PORT]/PATH` is TLS (default port 443). `wisp:ws://HOST[:PORT]/PATH` has no TLS (default port
+  80). `wisp:HOST[:PORT]/PATH` is the same as `wss://`. `wisp+wss://` and `wisp+ws://` (the form of a forwarder
+  template) are the same. The URL takes no user and no password: a usage error (exit 64). `wisp:PORT` is still the
+  SOCKS5 hop of a host named `wisp`.
+* The server takes no credential of this client. A server that requires a password or a key is refused at `up`.
+* The connection to the server uses the way out of the process, or the way below the network. The certificate is
+  checked with the roots of podnet (`--ca-file`).
+* `up` opens the connection: the WebSocket and the opening of Wisp. A fault starts with the label and names the hop:
+  `wisp:wss://w.example/wisp/: the Wisp server: ...`. The message of the day of the server goes to the log.
+* A target that the server cannot reach fails the stream with the reason of the server: `the Wisp server closed the
+  stream: 0x44, the destination refused the connection`. A server of version 1 does not confirm a stream: a stream
+  that the server does not close in 3 s is taken as open.
+* When the server closed the connection, the next stream opens a new connection, one time.
+* The status of the link has the scheme, the label, `tls`, the version of Wisp and `confirms` (the server confirms
+  each stream).
+* `podnet net doctor --network SPEC` adds the row of the network: `ok` when the connection opens, `fail` with the
+  hop when it does not.
+* Tests use a stand-in Wisp server of version 2 on the loopback (`src/networks/servers_stand.rs`).
+* Not in the network: UDP streams, and the password and key extensions of Wisp version 2.
 
 ## A user with no passwd entry
 
@@ -18048,7 +18176,7 @@ podnet forward -L unix:/run/db.sock=db.internal:5432 --run-for 3600
   for its service (see "A service of a peer" below). It carries TCP only.
 * `--network SPEC` selects the network (see [egress.md](egress.md)): `direct`, a proxy URL, `relay` or
   `relay:URL`, `tailscale:/PATH`, `netbird:[PORT]`, `wg:FILE`, `devtunnel://TUNNEL` (TCP only), `https://HOST[:PORT]` (a proxy over TLS, TCP only),
-  `wstunnel:wss://HOST[:PORT]` (TCP only), `turn://HOST[:PORT]` or `turns://HOST[:PORT]` (UDP
+  `wstunnel:wss://HOST[:PORT]`, `vless://HOST:PORT?...`, `ss://HOST:PORT` and `wisp:wss://HOST[:PORT]/PATH` (TCP only), `turn://HOST[:PORT]` or `turns://HOST[:PORT]` (UDP
   only), `unix:/PATH`, or a chain `TOP over BELOW` (`'wg:FILE over warp'`). The default is the way out of the process: `--proxy`, the
   proxy variables, else direct.
 * `devtunnel://TUNNEL` carries a TCP forward through a Microsoft Dev Tunnels relay to a port of the tunnel host:
@@ -18433,6 +18561,9 @@ one form for each command. The same specs are used by `--egress`, `podnet forwar
 | `devtunnel` | `devtunnel://NAME`, `devtunnel://ID.CLUSTER` | A stream to a port of the host of a Microsoft Dev Tunnels tunnel, through its relay. The target host is `127.0.0.1`. The token comes from `PODNET_DEVTUNNEL_TOKEN_FILE` or `PODNET_DEVTUNNEL_ACCESS_TOKEN_FILE` (or none with `PODNET_DEVTUNNEL_ANONYMOUS=1`), never from the spec ([networks.md](networks.md)). | TCP |
 | `https` | `https://[USER@]HOST[:PORT]` | A forward proxy over TLS: TLS to the proxy, then CONNECT on HTTP/2 or HTTP/1.1 (`via` of `pod-egress`). The credentials come from `PODNET_HTTPS_PROXY_AUTH_FILE` or `PODNET_HTTPS_PROXY_AUTH`, never from the spec ([networks.md](networks.md), "A proxy over TLS"). | TCP |
 | `wstunnel` | `wstunnel:wss://HOST[:PORT]`, `wstunnel:ws://HOST[:PORT]`, `wstunnel:HOST[:PORT]` | A server of erebe/wstunnel, 9.1 to 11 (`wstunnel` of `pod-egress`). The path prefix and the credentials come from `PODNET_WSTUNNEL_SECRET_FILE` or `PODNET_WSTUNNEL_SECRET`, never from the spec ([networks.md](networks.md), "wstunnel"). | TCP |
+| `vless` | `vless://HOST:PORT?type=ws\|xhttp&security=tls\|none&sni=&host=&path=&mode=` | A VLESS server (Xray-core, sing-box) over a WebSocket or XHTTP (`vless` of `pod-egress`). The spec is the share link with no ID. The ID comes from `PODNET_VLESS_ID_FILE` or `PODNET_VLESS_ID`, never from the spec ([networks.md](networks.md), "VLESS"). | TCP |
+| `shadowsocks` | `ss://HOST:PORT` | A Shadowsocks server, in the AEAD form or Shadowsocks 2022, on TCP (`shadowsocks` of `pod-egress`). The key (`METHOD:PASSWORD`, or the `ss://` URI of the server) comes from `PODNET_SHADOWSOCKS_KEY_FILE` or `PODNET_SHADOWSOCKS_KEY`, never from the spec ([networks.md](networks.md), "Shadowsocks"). | TCP |
+| `wisp` | `wisp:wss://HOST[:PORT]/PATH`, `wisp:ws://HOST[:PORT]/PATH`, `wisp+wss://HOST[:PORT]/PATH` | Many TCP streams over one WebSocket to a Wisp server, versions 1 and 2 (`wisp` of `pod-egress`). The server takes no credential ([networks.md](networks.md), "Wisp"). | TCP |
 | chain | `SPEC over SPEC` | A network over the way of the network below it: `wg:FILE over warp` sends the UDP of WireGuard through a WARP session. The top layer comes first. The chain carries what its top layer carries ([networks.md](networks.md), "A chain of networks"). | as the top layer |
 | `peer` | `peer:FINGERPRINT/SERVICE` | One stream to a service of a peer, over a link that a running `podnet link connect` or `link listen` instance holds ([link.md](link.md)). A peer way: it meets a peer and dials no destination. | TCP |
 
@@ -18450,6 +18581,8 @@ one form for each command. The same specs are used by `--egress`, `podnet forwar
   with `podnet forward -L ... --network SPEC`, a `networks:` entry of a router file, or `podnet net doctor --network SPEC`.
   `--egress https://...` and `--egress wstunnel:...` give one line that says that the network is not a proxy of the
   process or a hop of a pod. The proxy of the process does not take `https://` ([proxies.md](proxies.md)).
+* `vless://`, `ss://` and `wisp:` open their own streams through a VLESS, a Shadowsocks or a Wisp server. Use them as
+  `https://` and `wstunnel:`. `--egress` gives one line that names the network and `--network`.
 * `warp` and `warp:identity=FILE` are networks of the registry: TCP and UDP through a WARP session, with names
   resolved inside the tunnel ([router.md](router.md), "WARP as a member"). Use them with
   `podnet forward --network warp` or in a `networks:` entry of a router file. `--egress warp` gives one line
@@ -18522,6 +18655,32 @@ is in [networks.md](networks.md).
 | The protocol of wstunnel | the WebSocket transport of erebe/wstunnel 9.1 to 11 (its token, its path prefix) | 2026-11-26 |
 | The client | `pod-egress` of PodUtils/podcrates (features `via` and `wstunnel`), at the tag of `Cargo.toml` | 2026-11-26 |
 | The test servers | stand-ins on the loopback (`src/networks/road_stand.rs`); the runs against wstunnel and Caddy are tests of `pod-egress` | 2026-11-26 |
+
+## VLESS, Shadowsocks and Wisp
+
+```sh
+export PODNET_VLESS_ID_FILE=/etc/podnet/vless-id   # the UUID of the user
+podnet forward -L 127.0.0.1:2222=code.example:22 --network 'vless://v.example:443?type=ws&security=tls&path=/ws'
+
+export PODNET_SHADOWSOCKS_KEY_FILE=/etc/podnet/ss-key   # one line: METHOD:PASSWORD
+podnet forward -L 127.0.0.1:2222=code.example:22 --network ss://ss.example:8388
+
+podnet forward -L 127.0.0.1:2222=code.example:22 --network wisp:wss://w.example/wisp/
+```
+
+The three are roads of `pod-egress` (PodUtils/podcrates); podnet holds no code of them. A spec holds no secret: an
+ID or a key in a spec is a usage error (exit 64) that does not repeat it. A missing or bad secret is a usage error
+that names the variable. `up` proves the reach of the server (and its certificate over TLS); for Wisp it opens the
+connection. A fault names the hop (`the VLESS server`, `the Shadowsocks server`, `the Wisp server`). Each form,
+each setting and each fault is in [networks.md](networks.md).
+
+| Item | Value | Checked |
+| --- | --- | --- |
+| The protocol of VLESS | the request and the answer of Xray-core (`proxy/vless/encoding`), over a WebSocket or XHTTP | 2026-11-26 |
+| The protocol of Shadowsocks | the AEAD form of shadowsocks.org and SIP022 (Shadowsocks 2022); the URI of SIP002 | 2026-11-26 |
+| The protocol of Wisp | the Wisp protocol of Mercury Workshop, versions 1 and 2 (`protocol.md`) | 2026-11-26 |
+| The client | `pod-egress` of PodUtils/podcrates (features `vless`, `shadowsocks` and `wisp`), at the tag of `Cargo.toml` | 2026-11-26 |
+| The test servers | stand-ins on the loopback (`src/networks/servers_stand.rs`); the published vectors of each protocol are tests of `pod-egress` | 2026-11-26 |
 
 ## TURN servers
 

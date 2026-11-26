@@ -145,8 +145,8 @@ pub(crate) enum Command {
     /// Forward local ports through a network: -L LISTEN=HOST:PORT (TCP, or UDP
     /// with udp:LISTEN) and a DNS door with --dns. --network SPEC is direct, a
     /// proxy, the relay, a tailnet, wg:FILE, turn://HOST for UDP,
-    /// devtunnel://TUNNEL, https://HOST (a proxy over TLS),
-    /// wstunnel:wss://HOST or warp.
+    /// devtunnel://TUNNEL, warp, or a server (https://, wstunnel:, vless://,
+    /// ss://, wisp:).
     Forward(cmd::forward::ForwardArgs),
     /// A router of networks, groups, doors and guest wires from a config file
     /// (--config FILE), with health probes and --detach. A guest uses the

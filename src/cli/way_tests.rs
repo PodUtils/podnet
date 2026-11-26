@@ -270,7 +270,13 @@ fn egress_alias_a_spec_that_the_command_cannot_take_is_one_usage_line() {
         assert!(text.contains("--network warp"), "{text}");
     }
     // T-126: the roads of pod-egress are networks of the registry.
-    for spec in ["https://proxy.example:8443", "wstunnel:wss://ws.example"] {
+    // T-127: and so are VLESS, Shadowsocks and Wisp.
+    for spec in [
+        "https://proxy.example:8443",
+        "wstunnel:wss://ws.example",
+        "ss://ss.example:8388",
+        "wisp:wss://w.example/wisp/",
+    ] {
         for words in [
             &["podnet", "--egress", spec, "status"][..],
             &["podnet", "--egress", spec, "pod", "--", "true"],

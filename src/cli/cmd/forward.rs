@@ -57,7 +57,11 @@ pub(crate) struct ForwardArgs {
     /// proxy over TLS, by CONNECT; the credentials come from
     /// PODNET_HTTPS_PROXY_AUTH_FILE), or wstunnel:wss://HOST[:PORT] (TCP
     /// through a wstunnel server; the secret comes from
-    /// PODNET_WSTUNNEL_SECRET_FILE), or
+    /// PODNET_WSTUNNEL_SECRET_FILE), or vless://HOST:PORT?type=ws&security=tls
+    /// (TCP through a VLESS server; the ID comes from PODNET_VLESS_ID_FILE),
+    /// or ss://HOST:PORT (TCP through a Shadowsocks server; the key comes
+    /// from PODNET_SHADOWSOCKS_KEY_FILE), or wisp:wss://HOST/PATH (TCP
+    /// through a Wisp server), or
     /// warp or warp:identity=FILE (TCP and UDP through a WARP session; names
     /// resolve inside the tunnel; the device is kept in FILE, else in the
     /// default identity file of podnet warp). A SOCKS5 or HTTP proxy carries no UDP. Default:

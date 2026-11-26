@@ -186,7 +186,22 @@ pub(super) async fn probe(
     label: &str,
     what: &str,
 ) -> Result<(), Failure> {
+    probe_as(way, trust, target, None, tls, label, what).await
+}
+
+/// [`probe`] with the TLS name `name` (the `sni` of a VLESS link), else
+/// the host of `target`.
+pub(super) async fn probe_as(
+    way: &pod_ws::Way,
+    trust: &Trust,
+    target: &Target,
+    name: Option<&str>,
+    tls: bool,
+    label: &str,
+    what: &str,
+) -> Result<(), Failure> {
     let (host, port) = (target.host(), target.port());
+    let name = name.map_or_else(|| host.to_string(), str::to_string);
     let failed = |e: pod_ws::ConnectError| {
         let (stage, class) = e.stage_and_class();
         let why = match &e {
@@ -196,7 +211,7 @@ pub(super) async fn probe(
         Failure::caused(stage, class, format!("{label}: {what}: {why}"), e)
     };
     if tls {
-        way.open_tls(&host, port, &host, trust, STEP, &[])
+        way.open_tls(&host, port, &name, trust, STEP, &[])
             .await
             .map_err(failed)?;
     } else {

@@ -1,9 +1,11 @@
-//! `podnet forward --network https://...` and `--network wstunnel:...`
-//! (T-126): a TCP stream goes through a forward proxy over TLS, or through a
-//! wstunnel server. The servers are the stand-ins of
-//! `src/networks/road_stand.rs` on the loopback, with a CA that `--ca-file`
-//! gives: no public server and no account. The secrets come from the
-//! environment, never from `argv`.
+//! `podnet forward --network https://...`, `--network wstunnel:...` (T-126),
+//! `--network vless://...`, `--network ss://...` and `--network wisp:...`
+//! (T-127): a TCP stream goes through a forward proxy over TLS, a wstunnel
+//! server, a VLESS server, a Shadowsocks server or a Wisp server. The
+//! servers are the stand-ins of `src/networks/road_stand.rs` and
+//! `src/networks/servers_stand.rs` on the loopback, with a CA that
+//! `--ca-file` gives: no public server and no account. The secrets come from
+//! the environment, never from `argv`.
 
 mod test_host;
 
@@ -12,6 +14,9 @@ mod turn_mock;
 
 #[path = "../src/networks/road_stand.rs"]
 mod road_stand;
+
+#[path = "../src/networks/servers_stand.rs"]
+mod servers_stand;
 
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpStream;
@@ -31,6 +36,10 @@ fn podnet(sub: &[&str], args: &[&str]) -> Command {
         "PODNET_HTTPS_PROXY_VERSION",
         "PODNET_WSTUNNEL_SECRET",
         "PODNET_WSTUNNEL_SECRET_FILE",
+        "PODNET_VLESS_ID",
+        "PODNET_VLESS_ID_FILE",
+        "PODNET_SHADOWSOCKS_KEY",
+        "PODNET_SHADOWSOCKS_KEY_FILE",
         "PODNET_PROXY",
         "HTTPS_PROXY",
         "https_proxy",
@@ -78,7 +87,17 @@ async fn a_tcp_forward_goes_through_each_road_of_pod_egress() {
     test_host::need_loopback!();
     let echo = stand::echo().await;
     let (proxy, wst) = (stand::https_proxy().await, stand::wstunnel().await);
+    let (vless, ss) = (
+        servers_stand::vless().await,
+        servers_stand::shadowsocks().await,
+    );
+    let wisp = servers_stand::wisp().await;
     let line = format!("{}:{}", stand::USER, stand::PASSWORD);
+    let key = format!(
+        "{}:{}",
+        servers_stand::SS_METHOD,
+        servers_stand::SS_PASSWORD
+    );
     let roads = [
         (
             format!("https://{}", proxy.addr),
@@ -89,6 +108,22 @@ async fn a_tcp_forward_goes_through_each_road_of_pod_egress() {
             format!("wstunnel:wss://{}", wst.addr),
             "PODNET_WSTUNNEL_SECRET_FILE",
             stand::PREFIX,
+        ),
+        (
+            format!("vless://{}?type=ws&security=tls&path=%2Fvless", vless.addr),
+            "PODNET_VLESS_ID_FILE",
+            servers_stand::VLESS_ID,
+        ),
+        (
+            format!("ss://{}", ss.addr),
+            "PODNET_SHADOWSOCKS_KEY_FILE",
+            key.as_str(),
+        ),
+        // A Wisp server takes no secret: the file is not read.
+        (
+            format!("wisp:wss://{}{}", wisp.stand.addr, servers_stand::WISP_PATH),
+            "PODNET_UNUSED_FILE",
+            "no-secret-of-wisp",
         ),
     ];
     for (network, variable, secret) in roads {
@@ -115,7 +150,11 @@ async fn a_tcp_forward_goes_through_each_road_of_pod_egress() {
         let mut first = String::new();
         stdout.read_line(&mut first).unwrap();
         assert!(first.starts_with("podnet: forward"), "{network}: {first:?}");
-        assert!(first.contains(&format!("via {network}")), "{first:?}");
+        let label = match network.split_once('?') {
+            Some((at, _)) => format!("{at}/vless"),
+            None => network.clone(),
+        };
+        assert!(first.contains(&format!("via {label}")), "{first:?}");
         for text in ["first", "second"] {
             let mut client = TcpStream::connect(("127.0.0.1", port)).unwrap();
             client
@@ -145,8 +184,15 @@ async fn a_tcp_forward_goes_through_each_road_of_pod_egress() {
             "a secret is in the output: {output}"
         );
     }
-    assert_eq!(proxy.seen.lock().unwrap().targets.len(), 2);
-    assert_eq!(wst.seen.lock().unwrap().targets.len(), 2);
+    for (seen, road) in [
+        (&proxy.seen, "https"),
+        (&wst.seen, "wstunnel"),
+        (&vless.seen, "vless"),
+        (&ss.seen, "ss"),
+        (&wisp.stand.seen, "wisp"),
+    ] {
+        assert_eq!(seen.lock().unwrap().targets.len(), 2, "{road}");
+    }
 }
 
 /// A case of a fault: the spec, the variables, and the text that the line
@@ -161,7 +207,7 @@ type Case = (
 /// exit 64, a line that names the variable or the form, and no secret.
 #[test]
 fn a_bad_road_spec_or_secret_is_a_usage_error_with_no_secret() {
-    let cases: [Case; 5] = [
+    let cases: [Case; 10] = [
         ("https://user:hunter2@127.0.0.1:9", &[], "password"),
         (
             "https://user@127.0.0.1:9",
@@ -179,6 +225,23 @@ fn a_bad_road_spec_or_secret_is_a_usage_error_with_no_secret() {
             &[("PODNET_WSTUNNEL_SECRET", "hunter2")],
             "wss://",
         ),
+        (
+            "vless://hunter2@127.0.0.1:9?type=ws",
+            &[],
+            "PODNET_VLESS_ID_FILE",
+        ),
+        ("vless://127.0.0.1:9?type=ws", &[], "PODNET_VLESS_ID_FILE"),
+        (
+            "ss://127.0.0.1:9",
+            &[("PODNET_SHADOWSOCKS_KEY", "hunter2")],
+            "PODNET_SHADOWSOCKS_KEY",
+        ),
+        (
+            "ss://hunter2@127.0.0.1:9",
+            &[],
+            "PODNET_SHADOWSOCKS_KEY_FILE",
+        ),
+        ("wisp:wss://u:hunter2@127.0.0.1:9/", &[], "no user"),
     ];
     for (network, vars, named) in cases {
         let mut cmd = podnet(
@@ -197,7 +260,13 @@ fn a_bad_road_spec_or_secret_is_a_usage_error_with_no_secret() {
         assert!(!all.contains("hunter2"), "{network}: {all}");
     }
     // --egress names the networks of the registry.
-    for network in ["https://127.0.0.1:9", "wstunnel:wss://127.0.0.1:9"] {
+    for network in [
+        "https://127.0.0.1:9",
+        "wstunnel:wss://127.0.0.1:9",
+        "vless://127.0.0.1:9?type=ws",
+        "ss://127.0.0.1:9",
+        "wisp:wss://127.0.0.1:9/",
+    ] {
         let out = podnet(&["--egress", network, "doctor"], &[])
             .output()
             .unwrap();
@@ -288,6 +357,74 @@ async fn net_doctor_has_a_row_for_each_road_that_names_the_hop() {
         let text = row.to_string();
         assert!(
             !text.contains(stand::PASSWORD) && !text.contains(stand::PREFIX),
+            "{text}"
+        );
+    }
+}
+
+/// `net doctor --network` (T-127): the row of a VLESS, a Shadowsocks and a
+/// Wisp server is `ok` when its server takes the connection (and the opening
+/// of Wisp), and `fail` with the hop when no server answers. No secret
+/// reaches the document.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn net_doctor_has_a_row_for_each_server_road_that_names_the_hop() {
+    test_host::need_loopback!();
+    let (vless, ss) = (
+        servers_stand::vless().await,
+        servers_stand::shadowsocks().await,
+    );
+    let wisp = servers_stand::wisp().await;
+    let key = format!(
+        "{}:{}",
+        servers_stand::SS_METHOD,
+        servers_stand::SS_PASSWORD
+    );
+    let (dir, dir2) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let (ca, id) = files(&dir, servers_stand::VLESS_ID);
+    let (_, key_file) = files(&dir2, &key);
+    let closed = free_tcp_port();
+    let vless_at = |at: String| format!("vless://{at}?type=ws&security=tls&path=%2Fvless");
+    let (id_var, key_var) = ("PODNET_VLESS_ID_FILE", "PODNET_SHADOWSOCKS_KEY_FILE");
+    let wisp_at = |at: String| format!("wisp:wss://{at}{}", servers_stand::WISP_PATH);
+    let rows = [
+        (vless_at(vless.addr.to_string()), id_var, &id, "ok", ""),
+        (format!("ss://{}", ss.addr), key_var, &key_file, "ok", ""),
+        (wisp_at(wisp.stand.addr.to_string()), id_var, &id, "ok", ""),
+        (
+            vless_at(format!("127.0.0.1:{closed}")),
+            id_var,
+            &id,
+            "fail",
+            "the VLESS server",
+        ),
+        (
+            format!("ss://127.0.0.1:{closed}"),
+            key_var,
+            &key_file,
+            "fail",
+            "the Shadowsocks server",
+        ),
+        (
+            wisp_at(format!("127.0.0.1:{closed}")),
+            id_var,
+            &id,
+            "fail",
+            "the Wisp server",
+        ),
+    ];
+    for (network, variable, file, status, hop) in rows {
+        let (ca, file, n) = (ca.clone(), file.clone(), network.clone());
+        let row = tokio::task::spawn_blocking(move || doctor_row(&n, &ca, variable, &file))
+            .await
+            .unwrap();
+        assert_eq!(row["status"], status, "{network}: {row}");
+        assert!(
+            row["detail"].as_str().unwrap_or_default().contains(hop),
+            "{row}"
+        );
+        let text = row.to_string();
+        assert!(
+            !text.contains(servers_stand::VLESS_ID) && !text.contains(servers_stand::SS_PASSWORD),
             "{text}"
         );
     }

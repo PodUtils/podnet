@@ -7,9 +7,10 @@
 //! `127.0.0.1`. No public server and no account: the user, the password and
 //! the prefix are made-up values.
 //!
-//! The file is used by the unit tests (`networks::via_tests`) and by the
-//! test of the command (`tests/road_network.rs`, by `#[path]`), each beside
-//! `turn_mock.rs`.
+//! The file is used by the unit tests (`networks::via_tests`,
+//! `networks::servers`) and by the test of the command
+//! (`tests/road_network.rs`, by `#[path]`), each beside `turn_mock.rs`. The
+//! stand-ins of VLESS, Shadowsocks and Wisp are in `servers_stand.rs`.
 #![allow(dead_code)]
 
 use std::net::SocketAddr;
@@ -49,7 +50,7 @@ pub fn ca_pem() -> &'static str {
     &turn_mock::certificates().ca
 }
 
-fn acceptor() -> TlsAcceptor {
+pub fn acceptor() -> TlsAcceptor {
     let made = turn_mock::certificates();
     pod_tls::server::acceptor(
         turn_mock::provider(),
@@ -78,7 +79,7 @@ pub async fn echo() -> SocketAddr {
 }
 
 /// The head of a request, up to the empty line; `None` at an early end.
-async fn read_head<S: AsyncRead + Unpin>(stream: &mut S) -> Option<String> {
+pub async fn read_head<S: AsyncRead + Unpin>(stream: &mut S) -> Option<String> {
     let mut buf = Vec::new();
     let mut byte = [0u8; 1];
     while !buf.ends_with(b"\r\n\r\n") {
@@ -91,7 +92,7 @@ async fn read_head<S: AsyncRead + Unpin>(stream: &mut S) -> Option<String> {
 }
 
 /// The value of the header `name` (lower case) of `head`.
-fn header<'a>(head: &'a str, name: &str) -> Option<&'a str> {
+pub fn header<'a>(head: &'a str, name: &str) -> Option<&'a str> {
     head.lines().skip(1).find_map(|line| {
         let (key, value) = line.split_once(':')?;
         key.trim()
@@ -205,7 +206,7 @@ pub async fn wstunnel() -> Stand {
                     pod_ws::handshake::accept_key(key)
                 );
                 if tls.write_all(answer.as_bytes()).await.is_ok() {
-                    pump(tls, far).await;
+                    pump(tls, far, Vec::new()).await;
                 }
             });
         }
@@ -216,14 +217,15 @@ pub async fn wstunnel() -> Stand {
 /// The bytes of a tunnel: each binary frame of the client to the target,
 /// each read of the target to the client in a binary frame. A Close of the
 /// client ends the input of the target; the end of the target sends a Close.
-async fn pump<S>(ws: S, far: TcpStream)
+/// `raw` holds the bytes of the client that were read and not decoded yet.
+pub async fn pump<S>(ws: S, far: TcpStream, raw: Vec<u8>)
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
 {
     let (mut ws_read, mut ws_write) = tokio::io::split(ws);
     let (mut far_read, mut far_write) = far.into_split();
     let up = tokio::spawn(async move {
-        let mut buf = Vec::new();
+        let mut buf = raw;
         let mut chunk = [0u8; 16 * 1024];
         loop {
             while let Ok(Some((frame, used))) = frame::decode(&buf, Role::Client) {
