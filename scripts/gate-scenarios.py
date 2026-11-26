@@ -116,11 +116,19 @@ def called(text, paths):
         if top is None:
             continue
         rest = words[words.index(top) + 1 :]
-        sub = next((w for w in rest if f"{top} {w}" in paths), None)
-        if sub:
+        sub = next((w for w in rest if f"{top} {w}" in paths or any(p.startswith(f"{top} {w} ") for p in paths)), None)
+        if sub is None:
+            if top in paths:
+                found.add(top)
+            continue
+        # A third level (offline spool add, T-398): the next word that names
+        # a subcommand of the subcommand.
+        after = rest[rest.index(sub) + 1 :]
+        third = next((w for w in after if f"{top} {sub} {w}" in paths), None)
+        if third:
+            found.add(f"{top} {sub} {third}")
+        elif f"{top} {sub}" in paths:
             found.add(f"{top} {sub}")
-        elif top in paths:
-            found.add(top)
     return found
 
 
@@ -173,6 +181,24 @@ LANE_MAP = {
     "man": ["man"],
     # scripts/lab-errors.sh (T-452): the error rows.
     "errors": ["bench", "connect", "pod", "tunnel", "warp proxy"],
+    # T-398: the commands of local files only.
+    "local-files": [
+        "host probe",
+        "rules check",
+        "init generate",
+        "init check",
+        "ci check",
+        "offline spool add",
+        "offline spool list",
+        "offline spool check",
+        "offline spool take",
+        "offline bundle build",
+        "offline bundle verify",
+        "offline bundle apply",
+        "offline pair offer",
+        "offline pair accept",
+        "forge clone",
+    ],
     "local": [
         "completions",
         "components",

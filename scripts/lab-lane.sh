@@ -59,7 +59,7 @@
 
 set -u
 
-CASES="version man local errors doctor shim-forward link-unix link-control net-switch wg-serve pod-seccomp pod-netns net-proxy-unix"
+CASES="version man local local-files errors doctor shim-forward link-unix link-control net-switch wg-serve pod-seccomp pod-netns net-proxy-unix"
 NET_LABS="proxy-only proxy-tls-reterminate proxy-per-name ws-upgrade-refused sni-allowlist no-proxy-no-dns ipv6-only"
 NET_CASES="version errors doctor net-curl net-bench net-exit net-pod-auto net-pod-seccomp net-pod-netns"
 WAYOUT_CASES="way-tunnel way-relay"
@@ -149,6 +149,55 @@ case_main() {
         code=$?
         local_check '^export LD_PRELOAD=' || exit 1
         test -s "$dir/socks/libpodnet-socks.so" || { echo "no libpodnet-socks.so"; exit 1; }
+        ;;
+    local-files)
+        # T-398: the commands that read and write local files only: the
+        # host probe, the policy and the node configuration, the CI
+        # declaration, the spool, the bundle, the pairing and the clone of a
+        # seed. Each exits 0 with its words.
+        cd "$dir" || exit 1
+        step() {
+            want=$1
+            shift
+            timeout 60 "$@" >"$dir/files.txt" 2>"$dir/files.err"
+            code=$?
+            shift
+            echo "$* -> exit $code"
+            test $code -eq 0 || { cat "$dir/files.err"; return 1; }
+            test -z "$want" || grep -q -- "$want" "$dir/files.txt" || { echo "no line with: $want"; head -5 "$dir/files.txt"; return 1; }
+        }
+        step '"kind": "podnet.host-probe/1"' "$podnet" host probe "$dir" --json || exit 1
+        printf '{"default":"direct","rules":[{"name":"no-x","action":"refuse","host":"x.example"}]}' >pol.json
+        step '1 rules, default direct' "$podnet" rules check pol.json || exit 1
+        step '' "$podnet" init generate --relay https://relay.example lab-node --out node.json || exit 1
+        step 'node lab-node' "$podnet" init check node.json || exit 1
+        printf '{"schema":1,"kind":"podnet.ci-egress/1","hosts":[{"host":"lab.test","port":443}]}' >decl.json
+        export PODNET_POLICY="$dir/pol.json"
+        step '1 need(s) covered, 0 refused' "$podnet" ci check decl.json || exit 1
+        unset PODNET_POLICY
+        echo "a report" >body.txt
+        step '' "$podnet" offline spool add ./spool --file body.txt || exit 1
+        step '^0 ' "$podnet" offline spool list ./spool || exit 1
+        step 'no fault' "$podnet" offline spool check ./spool || exit 1
+        step '' "$podnet" offline spool take ./spool --out taken.txt || exit 1
+        cmp -s body.txt taken.txt || { echo "the taken body differs"; exit 1; }
+        mkdir -p site && echo one >site/a.txt
+        step '^bundle field ' "$podnet" offline bundle build --out old --name field --file ./site:site || exit 1
+        echo two >site/b.txt
+        step '^delta field ' "$podnet" offline bundle build --out delta --name field --base ./old --file ./site:site || exit 1
+        step '^bundle field ' "$podnet" offline bundle verify old || exit 1
+        step '^applied field ' "$podnet" offline bundle apply --base ./old --delta ./delta || exit 1
+        timeout 60 "$podnet" offline pair offer --out offer.txt >code.txt 2>"$dir/files.err" || { cat "$dir/files.err"; exit 1; }
+        timeout 60 "$podnet" offline pair accept --offer offer.txt --used ./used <code.txt >"$dir/files.txt" 2>"$dir/files.err"
+        code=$?
+        echo "offline pair accept -> exit $code"
+        test $code -eq 0 && cat "$dir/files.txt" "$dir/files.err" | grep -q '^paired with ' || { cat "$dir/files.err"; exit 1; }
+        if command -v git >/dev/null 2>&1; then
+            git init -q seed && git -C seed -c user.email=lab@lab.test -c user.name=lab commit -q --allow-empty -m seed || exit 1
+            step '^cloned seed ' "$podnet" forge clone --seed seed --expect "$(git -C seed rev-parse HEAD)" clone || exit 1
+        else
+            echo "no git on this host: forge clone is not run"
+        fi
         ;;
     doctor)
         timeout 120 "$podnet" doctor >"$dir/doctor.txt" 2>&1

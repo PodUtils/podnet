@@ -7994,6 +7994,16 @@ Live 44005215136 on `73b3e28` passed both steps: `pinggy: the origin answered th
 license` gave exit 64 (`HTTP 400`, code 1046, "Invalid license"). localhost.run refused the remote forward: its facts in
 `pod-services` have no `remote-port` (80); COORD-100 (#607) asks podcrates for the fact.
 
+2026-11-26, the fourth part, the commit of this entry. Commands added since 2026-11-16 had no scenario. A new lane case
+`local-files` runs the commands of local files only: `host probe`, `rules check`, `init generate`, `init check`, `ci
+check`, `offline spool add`, `list`, `check` and `take`, `offline bundle build` (a bundle and a delta), `verify` and
+`apply`, `offline pair offer` and `accept`, and `forge clone` of a local seed. Each step checks the exit 0 and its words.
+As uid 65534 with `podlab` `v0.84.0` it passes in `bind-denied`, `no-loopback`, `proc-masked`, `listen-denied` and
+`nonroot-nocaps`. `scripts/gate-scenarios.py` reads a third level of a command (`offline spool add`). 15 commands leave
+the experimental mark. Still experimental: `cover`, `harness`, `link p2p`, `net tailscale` (T-114), `offline discover
+announce` and `listen`, `offline capture merge`, `offline replica merge`, `init enroll`, `stat`, and the `sidecar`
+commands (feature `sidecar`, not in a release binary).
+
 # T-399: live: the WebSocket client of a --url origin dials a name that has no IPv4 answer yet
 
 **Source:** live 43898114234 on c591bab (2026-11-16), failed.
