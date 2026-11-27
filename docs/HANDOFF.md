@@ -13,8 +13,11 @@ off the release).
 
 ## Where the code is
 
-* All finished work is on `main`. The newest release is `v0.4.0-beta.21` (tag at `3d04883`; COORD-143 #801; manifest
-  list digest `sha256:7b07bc89c549d48bfeeaf28794e5186a5d8cd6d4978a63bae62fbf7a411534a5`).
+* All finished work is on `main` (`d8d2cac`): `ci` `46071689164` (all 13 jobs), `live` `46071689068` (including
+  `Benchmark comparison, podnet vs cloudflared`: `podnet` 84.42 rps / 43.70 ms p50 vs `cloudflared 2026.11.2` 53.12
+  rps / 77.63 ms p50, 0 errors each), `deny` `46071689190`, `secrets` `46071689317` and `issue-sync` `46071689493`
+  all passed. The newest release is `v0.4.0-beta.21` (tag at `3d04883`; COORD-143 #801; manifest list digest
+  `sha256:7b07bc89c549d48bfeeaf28794e5186a5d8cd6d4978a63bae62fbf7a411534a5`).
 * Done in this session after `v0.4.0-beta.21`:
   * **T-367 (GitHub #486 closed):** provider-agnostic MASQUE client (`QUIC-1` to `QUIC-5`, `CONNECT-IP`,
     `CONNECT-UDP`, WebTransport, `--masque-endpoint`, `MasqueEnrolment` with two providers, `IpPolicy::Ipv6Only`
