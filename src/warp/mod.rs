@@ -81,6 +81,7 @@ pub fn failed(failure: Failure) -> anyhow::Error {
     use pod_core::Class;
     let fault = match failure.class {
         Class::Usage => Fault::Usage,
+        Class::Config if foreign::is_os_file_fault(&failure) => Fault::OsError,
         Class::Config | Class::Revoked => Fault::Config,
         Class::NotFound => Fault::NoInput,
         Class::TempFail => Fault::TempFail,
@@ -753,5 +754,43 @@ mod tests {
         assert!(err.contains("chmod 600"), "{err}");
         let err = check_private(dir.path()).unwrap_err();
         assert_eq!(crate::exit::code_of(&err), crate::exit::USAGE, "{err:#}");
+    }
+}
+
+#[cfg(all(test, unix))]
+#[test]
+fn a_warp_identity_with_a_wrong_mode_exits_71() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("warp.json");
+    write_private(&path, b"{}").unwrap();
+    for mode in [0o644u32, 0o640, 0o604, 0o666] {
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(mode)).unwrap();
+        let err = check_private(&path).unwrap_err();
+        assert_eq!(
+            crate::exit::code_of(&err),
+            crate::exit::OS_ERROR,
+            "{mode:04o}: {err:#}"
+        );
+        let load_err = WarpClient::load(&path).err().expect("loose mode");
+        assert_eq!(
+            crate::exit::code_of(&load_err),
+            crate::exit::OS_ERROR,
+            "{mode:04o}: {load_err:#}"
+        );
+    }
+    let owner_err = failed(Failure::new(
+        pod_core::Stage::Warp,
+        pod_core::Class::Config,
+        "/tmp/w.json belongs to user 0, not to this user (1000); it is not used",
+    ));
+    assert_eq!(
+        crate::exit::code_of(&owner_err),
+        crate::exit::OS_ERROR,
+        "{owner_err:#}"
+    );
+    if pod_warp::files::this_uid() != 0 && Path::new("/etc/passwd").exists() {
+        let err = check_private(Path::new("/etc/passwd")).unwrap_err();
+        assert_eq!(crate::exit::code_of(&err), crate::exit::OS_ERROR, "{err:#}");
     }
 }

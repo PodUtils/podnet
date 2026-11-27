@@ -40,7 +40,8 @@ podnet warp down                    # stop it
   another user (root with the `HOME` of a user): the state directory skips
   that `HOME`, and `warp ssh-config --write`, `warp up --persist` and
   `--env-d`, and `autostart` exit 78. `PODNET_FOREIGN_HOME=allow` writes
-  anyway. A WARP identity file that another user owns is refused (exit 78).
+  anyway. A WARP identity file that another user owns or that other users
+  can read is refused (exit 71).
   `PODNET_FOREIGN_IDENTITY=allow` reads it when `--identity PATH` names it:
   the mode must be 0600, podnet logs a warning and writes nothing next to
   the file, and the default file of the state directory is not covered.

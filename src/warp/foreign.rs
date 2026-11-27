@@ -42,15 +42,22 @@ pub(super) fn owner(_path: &Path) -> Option<u32> {
     None
 }
 
+/// True when `pod-warp` refused an identity file for its mode or owner (exit 71).
+pub(super) fn is_os_file_fault(failure: &pod_core::Failure) -> bool {
+    let text = failure.chain();
+    text.contains("other users may read the WARP key")
+        || (text.contains("belongs to user ") && text.contains("not to this user"))
+}
+
 /// A refused identity file of another user names the consent variable.
 pub(super) fn hint(err: anyhow::Error, path: &Path) -> anyhow::Error {
-    if owner(path).is_none() || consent() || crate::exit::code_of(&err) != crate::exit::CONFIG {
+    if owner(path).is_none() || consent() || crate::exit::code_of(&err) != crate::exit::OS_ERROR {
         return err;
     }
     let text = format!(
         "to use the identity of that user, name the file with --identity (--warp-identity) and set {FOREIGN_IDENTITY_VARIABLE}=allow; podnet then reads the file and writes nothing to it"
     );
-    crate::exit::fault(crate::exit::Fault::Config, err.context(text))
+    crate::exit::fault(crate::exit::Fault::OsError, err.context(text))
 }
 
 /// The warning for an identity file of another user that podnet reads.
@@ -91,7 +98,7 @@ mod tests {
         Some(path)
     }
 
-    // T-173: a file of another user is refused with exit 78 and the name
+    // T-173, T-630: a file of another user is refused with exit 71 and the name
     // of the variable, read with the variable, and never written.
     #[tokio::test]
     async fn a_foreign_identity_needs_the_consent_variable() {
@@ -110,13 +117,13 @@ mod tests {
             .await
             .err()
             .expect("refused");
-        assert_eq!(crate::exit::code_of(&err), crate::exit::CONFIG, "{err:#}");
+        assert_eq!(crate::exit::code_of(&err), crate::exit::OS_ERROR, "{err:#}");
         assert!(
             format!("{err:#}").contains(FOREIGN_IDENTITY_VARIABLE),
             "{err:#}"
         );
         let err = WarpClient::load(&path).err().expect("refused");
-        assert_eq!(crate::exit::code_of(&err), crate::exit::CONFIG, "{err:#}");
+        assert_eq!(crate::exit::code_of(&err), crate::exit::OS_ERROR, "{err:#}");
         // The refusal of `register_or_load` leaves the lock file of
         // `pod-warp`: it is an ask for podcrates (the check before the lock).
         let _ = std::fs::remove_file(dir.path().join("warp.json.lock"));
