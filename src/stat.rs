@@ -11,7 +11,7 @@
 //! A regression is a diff of two files.
 
 use std::io::{BufRead, BufReader, Write};
-use std::net::{SocketAddr, ToSocketAddrs, UdpSocket};
+use std::net::{IpAddr, SocketAddr, UdpSocket};
 use std::path::Path;
 use std::time::{Duration, Instant};
 
@@ -210,7 +210,12 @@ pub fn run(options: &Options) -> anyhow::Result<Capture> {
     // EGRESS-3 and EGRESS-4: the peer is a destination of the policy,
     // checked before the datagram socket is bound.
     crate::policy::permit_fault(&addr.ip().to_string(), addr.port())?;
-    let socket = UdpSocket::bind(("0.0.0.0", 0))
+    let bind_addr = if addr.is_ipv6() {
+        "[::]:0"
+    } else {
+        "0.0.0.0:0"
+    };
+    let socket = UdpSocket::bind(bind_addr)
         .map_err(|e| anyhow::anyhow!("the local datagram socket: {e}"))?;
     socket
         .set_read_timeout(Some(options.timeout))
@@ -291,13 +296,64 @@ pub fn run(options: &Options) -> anyhow::Result<Capture> {
     })
 }
 
+/// Resolve `peer` (`HOST:PORT`) through the shared resolver path (pins,
+/// system resolver, and DNS over HTTPS). A malformed value exits 64; a name
+/// that does not resolve exits 68 with the DNS hop hint.
 fn resolve(peer: &str) -> anyhow::Result<SocketAddr> {
-    let mut addrs = peer
-        .to_socket_addrs()
-        .map_err(|e| anyhow::anyhow!("{peer}: {e}"))?;
-    addrs
-        .next()
-        .ok_or_else(|| anyhow::anyhow!("{peer}: no address"))
+    if let Ok(addr) = peer.parse::<SocketAddr>() {
+        return Ok(addr);
+    }
+    let (host, port) = peer
+        .rsplit_once(':')
+        .and_then(|(h, p)| Some((h.trim_matches(['[', ']']), p.parse::<u16>().ok()?)))
+        .filter(|(h, _)| !h.is_empty())
+        .ok_or_else(|| {
+            crate::exit::fault(
+                crate::exit::Fault::Usage,
+                anyhow::anyhow!("{peer}: give HOST:PORT"),
+            )
+        })?;
+    let no_host = |err: anyhow::Error| {
+        crate::exit::fault(
+            crate::exit::Fault::NoHost,
+            crate::hop::at(crate::hop::Hop::Dns, err).context(peer.to_string()),
+        )
+    };
+    let ips = block_resolve(host).map_err(no_host)?;
+    let ip = ips
+        .first()
+        .copied()
+        .ok_or_else(|| no_host(anyhow::anyhow!("{peer}: no address")))?;
+    Ok(SocketAddr::new(ip, port))
+}
+
+fn block_resolve(host: &str) -> anyhow::Result<Vec<IpAddr>> {
+    match tokio::runtime::Handle::try_current() {
+        Ok(handle) => match handle.runtime_flavor() {
+            tokio::runtime::RuntimeFlavor::MultiThread => {
+                tokio::task::block_in_place(|| handle.block_on(crate::resolve::resolve(host)))
+            }
+            _ => {
+                let host = host.to_string();
+                std::thread::spawn(move || {
+                    let rt = tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .map_err(|e| anyhow::anyhow!("starting resolver runtime: {e}"))?;
+                    rt.block_on(crate::resolve::resolve(&host))
+                })
+                .join()
+                .unwrap_or_else(|_| Err(anyhow::anyhow!("resolver thread panicked")))
+            }
+        },
+        Err(_) => {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .map_err(|e| anyhow::anyhow!("starting resolver runtime: {e}"))?;
+            rt.block_on(crate::resolve::resolve(host))
+        }
+    }
 }
 
 fn parse_reply(text: &str, seq: u32) -> Option<(u64, u64)> {
@@ -524,5 +580,40 @@ mod tests {
         let back = read(&path).unwrap();
         assert_eq!(back.samples, capture.samples);
         assert_eq!(back.peer, capture.peer);
+    }
+}
+
+/// T-622 (GitHub #788): a peer name that does not resolve exits 68 with the
+/// `--resolve HOST=IP` hint, and a malformed peer exits 64.
+#[cfg(test)]
+#[test]
+fn a_peer_name_that_does_not_resolve_exits_68() {
+    let cases = [
+        ("x.invalid:9", crate::exit::NO_HOST, Some("--resolve HOST=IP")),
+        (
+            "nope.invalid:443",
+            crate::exit::NO_HOST,
+            Some("--resolve HOST=IP"),
+        ),
+        ("no-port", crate::exit::USAGE, None),
+        (":9", crate::exit::USAGE, None),
+        ("x.invalid:notaport", crate::exit::USAGE, None),
+    ];
+    for (peer, want_code, want_hint) in cases {
+        let err = run(&Options {
+            peer: peer.into(),
+            count: 1,
+            ..Default::default()
+        })
+        .unwrap_err();
+        assert_eq!(
+            crate::exit::code_of(&err),
+            want_code,
+            "{peer}: {err:#}"
+        );
+        let line = crate::report::error_line(&err);
+        if let Some(hint) = want_hint {
+            assert!(line.contains(hint), "{peer}: {line}");
+        }
     }
 }
