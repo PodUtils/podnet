@@ -263,11 +263,7 @@ impl TcpRoute<'_> {
         };
         if self.verbose {
             let hops: Vec<String> = chain.iter().map(Proxy::endpoint).collect();
-            eprintln!(
-                "{}: {target} via {}",
-                crate::cli::program_name(),
-                hops.join(" -> ")
-            );
+            crate::log::info(&format!("{target} via {}", hops.join(" -> ")));
         }
         let dial_target = target.to_string();
         let dial = async move {
@@ -288,10 +284,9 @@ impl TcpRoute<'_> {
             // T-383: the gateway is the nameserver of the program; the fake
             // DNS answers a TCP connection to it (DNS over TCP).
             if self.verbose {
-                eprintln!(
-                    "{}: {TUN_GW}:{port} (the gateway) goes to the fake DNS of the pod (DNS over TCP)",
-                    crate::cli::program_name()
-                );
+                crate::log::info(&format!(
+                    "{TUN_GW}:{port} (the gateway) goes to the fake DNS of the pod (DNS over TCP)"
+                ));
             }
             let dns = self.dns_tcp.clone();
             return Box::pin(async move { Ok(dns.connect()) });
@@ -302,10 +297,7 @@ impl TcpRoute<'_> {
                 true => format!("127.0.0.1:{port} of the host (--host-gateway)"),
                 false => "a refusal (no --host-gateway)".to_string(),
             };
-            eprintln!(
-                "{}: {TUN_GW}:{port} (the gateway) goes to {what}",
-                crate::cli::program_name()
-            );
+            crate::log::info(&format!("{TUN_GW}:{port} (the gateway) goes to {what}"));
         }
         Box::pin(async move {
             if !on {

@@ -236,7 +236,7 @@ pub(crate) async fn supervise_seccomp(
         {
             if let Err(e) = notif_continue(lfd, id) {
                 if verbose {
-                    eprintln!("{}: notif {nr}: {e:#}", crate::cli::program_name());
+                    crate::log::warn(&format!("notif {nr}: {e:#}"));
                 }
             }
             continue;
@@ -304,7 +304,7 @@ pub(crate) async fn supervise_seccomp(
         };
         if let Err(e) = outcome {
             if verbose {
-                eprintln!("{}: notif {nr}: {e:#}", crate::cli::program_name());
+                crate::log::warn(&format!("notif {nr}: {e:#}"));
             }
             crate::fdtable::refuse(crate::fdtable::Refusal::Other, "a call", verbose);
             // A handler that fails before it answers must not leave the child
@@ -364,10 +364,9 @@ async fn watch_children(
             }
             let code = crate::outlive::exit_code(status);
             if verbose {
-                eprintln!(
-                    "{}: the program exited {code}; the pod stays while its other processes live",
-                    program_name()
-                );
+                crate::log::info(&format!(
+                    "the program exited {code}; the pod stays while its other processes live"
+                ));
             }
             reporter.report(code, verbose);
             continue;

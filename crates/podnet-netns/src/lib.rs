@@ -63,6 +63,7 @@ mod inbox;
 mod kernel;
 mod kernel_serve;
 mod learn;
+mod log;
 mod netns;
 mod nfnl;
 mod nfprobe;
@@ -81,6 +82,7 @@ mod udp;
 
 pub use cli::{set_program_name, set_version_line, usage, usage_for};
 pub use listen::ProxyListen;
+pub use log::{log_json, set_log_json};
 pub use upstream::{Net, Proxy, ProxyKind, Rule, RuleAction, RuleMatch, Upstream};
 
 /// The common imports of the internal modules.
@@ -143,7 +145,7 @@ pub fn main_with_args(argv: &[String]) -> i32 {
     let args = match parse_args(argv) {
         Ok(a) => a,
         Err(e) => {
-            eprintln!("{}: {e:#}", crate::cli::program_name());
+            crate::log::write_exit(USAGE, &format!("{e:#}"));
             return USAGE;
         }
     };
@@ -153,7 +155,7 @@ pub fn main_with_args(argv: &[String]) -> i32 {
     let report = match report::Report::begin(args.report.clone()) {
         Ok(r) => r,
         Err(e) => {
-            eprintln!("{}: {e:#}", cli::program_name());
+            crate::log::write_exit(USAGE, &format!("{e:#}"));
             return USAGE;
         }
     };
@@ -395,7 +397,7 @@ pub fn quiet() -> bool {
 /// Print a warning on stderr, unless [`quiet`].
 pub(crate) fn warn(text: &str) {
     if !quiet() {
-        eprintln!("{}: {text}", crate::cli::program_name());
+        crate::log::warn(text);
     }
 }
 

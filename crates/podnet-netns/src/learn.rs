@@ -182,17 +182,16 @@ pub(crate) fn finish(code: i32) -> i32 {
             return false;
         };
         let mode = mode.lock().unwrap_or_else(|e| e.into_inner());
-        let name = crate::cli::program_name();
         match &*mode {
             Mode::Learn { path, seen } => {
                 if let Err(e) = std::fs::write(path, render(seen)) {
-                    eprintln!("{name}: write the learned set {}: {e}", path.display());
+                    crate::log::error(&format!("write the learned set {}: {e}", path.display()));
                 }
                 false
             }
             Mode::Enforce { violations, .. } => {
                 for violation in violations {
-                    eprintln!("{name}: violation: {violation}");
+                    crate::log::warn(&format!("violation: {violation}"));
                 }
                 !violations.is_empty()
             }

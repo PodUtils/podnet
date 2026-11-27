@@ -181,10 +181,9 @@ pub(crate) fn handle_connect(
         let v6 = *v6;
         if is_loopback_target(ip) && !loopback_rules() {
             if route.verbose {
-                eprintln!(
-                    "{}: connect {ip}:{port}: the kernel connects (loopback)",
-                    crate::cli::program_name()
-                );
+                crate::log::info(&format!(
+                    "connect {ip}:{port}: the kernel connects (loopback)"
+                ));
             }
             return notif_continue(lfd, id);
         }
@@ -235,10 +234,7 @@ pub(crate) fn handle_connect(
         // Loopback does not go to the proxy (issue 80): a listener of the
         // program itself (its inbound socket), else TCP on this host.
         if route.verbose {
-            eprintln!(
-                "{}: connect {target} direct (loopback)",
-                crate::cli::program_name()
-            );
+            crate::log::info(&format!("connect {target} direct (loopback)"));
         }
         let inbound_dir = route.inbound_dir.to_path_buf();
         // T-456: with no write to the memory of the program, the pod cannot
@@ -253,11 +249,7 @@ pub(crate) fn handle_connect(
     } else {
         let chain = chain.unwrap_or_default();
         if route.verbose {
-            eprintln!(
-                "{}: connect {target} via {}",
-                crate::cli::program_name(),
-                chain[0].endpoint()
-            );
+            crate::log::info(&format!("connect {target} via {}", chain[0].endpoint()));
         }
         tokio::spawn(async move {
             // With --flow-log, the pod relays each flow, and counts its
@@ -293,11 +285,10 @@ fn connect_fake_dns(
     route: &Route<'_>,
 ) -> Result<()> {
     if route.verbose {
-        eprintln!(
-            "{}: connect {} goes to the fake DNS of the pod (DNS over TCP)",
-            crate::cli::program_name(),
+        crate::log::info(&format!(
+            "connect {} goes to the fake DNS of the pod (DNS over TCP)",
             SocketAddr::new(ip, DNS_PORT)
-        );
+        ));
     }
     let started = dials.state.start(key, id, nonblocking);
     let done = Dialed {
@@ -335,10 +326,7 @@ pub(crate) fn finish(
     let Some(waiting) = dials.state.finish(key, |id| notif_id_valid(lfd, id)) else {
         // No call waits for the blocking dial: drop the connection.
         if verbose {
-            eprintln!(
-                "{}: connect {target}: the call left; drop the dial",
-                crate::cli::program_name()
-            );
+            crate::log::info(&format!("connect {target}: the call left; drop the dial"));
         }
         return;
     };
@@ -377,7 +365,7 @@ pub(crate) fn finish(
                     // T-065: the program holds the upstream; no relay.
                     if verbose {
                         let what = "the program holds the upstream socket (no relay)";
-                        eprintln!("{}: connect {target}: {what}", crate::cli::program_name());
+                        crate::log::info(&format!("connect {target}: {what}"));
                     }
                     map.insert(new_key, Sock::Connected(entry));
                     answer(0);

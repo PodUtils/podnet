@@ -38,12 +38,11 @@ pub(crate) static REFUSALS: Refusals = Refusals::new();
 pub(crate) fn refuse(class: Refusal, what: &str, verbose: bool) {
     let n = REFUSALS.count(class);
     if verbose {
-        eprintln!(
-            "{}: {what} refused: {} ({n} of this class; the flow budget is {})",
-            crate::cli::program_name(),
+        crate::log::warn(&format!(
+            "{what} refused: {} ({n} of this class; the flow budget is {})",
             class.name(),
             ceiling()
-        );
+        ));
     }
 }
 

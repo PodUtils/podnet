@@ -149,7 +149,7 @@ pub(crate) fn split(verbose: bool, body: impl FnOnce(Reporter) -> Result<i32>) -
             }
             Err(e) => {
                 if !reporter.report_error(&e) {
-                    eprintln!("{}: {e:#}", crate::cli::program_name());
+                    crate::log::write_exit(EXIT_NO_BACKEND, &format!("{e:#}"));
                 }
                 EXIT_NO_BACKEND
             }
@@ -182,19 +182,17 @@ fn front(read: OwnedFd, back: libc::pid_t) -> Result<i32> {
     loop {
         if let Some((signal, count)) = crate::stop::received() {
             let since = *stopping.get_or_insert_with(|| {
-                eprintln!(
-                    "{}: {}: stopping the program",
-                    crate::cli::program_name(),
+                crate::log::info(&format!(
+                    "{}: stopping the program",
                     crate::stop::name(signal)
-                );
+                ));
                 std::time::Instant::now()
             });
             if count >= 2 || since.elapsed() >= crate::stop::GRACE {
-                eprintln!(
-                    "{}: {}: the program did not stop; each process of the pod gets SIGKILL",
-                    crate::cli::program_name(),
+                crate::log::warn(&format!(
+                    "{}: the program did not stop; each process of the pod gets SIGKILL",
                     crate::stop::name(signal)
-                );
+                ));
                 crate::stop::kill_all_under_self();
                 return Ok(128 + signal);
             }

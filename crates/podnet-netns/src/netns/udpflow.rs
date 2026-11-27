@@ -481,10 +481,9 @@ impl UdpFlows {
                     Fragment::Pending => None,
                     Fragment::Dropped(why) => {
                         if route.verbose {
-                            eprintln!(
-                                "{}: udp: a fragmented datagram is dropped: {why}",
-                                program_name()
-                            );
+                            crate::log::warn(&format!(
+                                "udp: a fragmented datagram is dropped: {why}"
+                            ));
                         }
                         None
                     }
@@ -498,12 +497,10 @@ impl UdpFlows {
                 self.held.push_back((key, payload));
             } else if let Err(payload) = self.give(key, payload, now, route) {
                 if route.verbose {
-                    eprintln!(
-                        "{}: the UDP queue of {}:{} is full; the pod stops the read of the TUN",
-                        program_name(),
-                        key.2,
-                        key.3
-                    );
+                    crate::log::warn(&format!(
+                        "the UDP queue of {}:{} is full; the pod stops the read of the TUN",
+                        key.2, key.3
+                    ));
                 }
                 self.held.push_back((key, payload));
             }
@@ -554,11 +551,10 @@ impl UdpFlows {
                     true => format!("127.0.0.1:{} of the host (--host-gateway)", key.3),
                     false => "nothing: it is dropped (no --host-gateway)".to_string(),
                 };
-                eprintln!(
-                    "{}: udp {TUN_GW}:{} (the gateway) goes to {what}",
-                    program_name(),
+                crate::log::info(&format!(
+                    "udp {TUN_GW}:{} (the gateway) goes to {what}",
                     key.3
-                );
+                ));
             }
             // T-112: a direct flow to the loopback of the host.
             let host = route.host_gateway.then(|| "127.0.0.1".to_string())?;
@@ -581,7 +577,7 @@ impl UdpFlows {
                 true => "direct".to_string(),
                 false => hops.join(""),
             };
-            eprintln!("{}: udp {target} via {via}", program_name());
+            crate::log::info(&format!("udp {target} via {via}"));
         }
         Some(self.spawn_flow(key, name, chain.first().cloned(), route.verbose))
     }
@@ -606,7 +602,7 @@ impl UdpFlows {
             let ends = Ends { key, name, replies };
             if let Err(e) = carry(proxy.as_ref(), datagrams, ends).await {
                 if verbose {
-                    eprintln!("{}: udp {target}: {e:#}", program_name());
+                    crate::log::warn(&format!("udp {target}: {e:#}"));
                 }
             }
         });

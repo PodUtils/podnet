@@ -109,7 +109,7 @@ async fn serve_tcp(shared: Arc<Shared>, listener: TcpListener) {
             }
             Err(e) => {
                 if shared.verbose {
-                    eprintln!("{}: accept: {e}", program_name());
+                    crate::log::warn(&format!("accept: {e}"));
                 }
                 tokio::time::sleep(Duration::from_millis(50)).await;
             }
@@ -140,7 +140,7 @@ async fn tcp_flow(shared: Arc<Shared>, stream: TcpStream) {
         Ok(dst) => dst,
         Err(e) => {
             if shared.verbose {
-                eprintln!("{}: SO_ORIGINAL_DST: {e}", program_name());
+                crate::log::warn(&format!("SO_ORIGINAL_DST: {e}"));
             }
             return reset(stream);
         }
@@ -157,7 +157,7 @@ async fn tcp_flow(shared: Arc<Shared>, stream: TcpStream) {
     };
     if shared.verbose {
         let hops: Vec<String> = chain.iter().map(Proxy::endpoint).collect();
-        eprintln!("{}: {target} via {}", program_name(), hops.join(" -> "));
+        crate::log::info(&format!("{target} via {}", hops.join(" -> ")));
     }
     let dialed = within_timeout("upstream connect", connect_upstream_async(&chain, &target)).await;
     match dialed {
@@ -199,7 +199,7 @@ async fn serve_udp(shared: Arc<Shared>, socket: UdpSocket, port: u16, netlink: O
                     Ok(dst) => dst,
                     Err(e) => {
                         if shared.verbose {
-                            eprintln!("{}: udp: {e}", program_name());
+                            crate::log::warn(&format!("udp: {e}"));
                         }
                         continue;
                     }

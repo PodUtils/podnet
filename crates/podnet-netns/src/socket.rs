@@ -67,8 +67,8 @@ pub(crate) fn handle_socket(
         ALLOW_RAW.load(std::sync::atomic::Ordering::Relaxed),
     ) {
         if verbose {
-            eprintln!(
-                "podnet pod: a raw or packet socket gets EPERM (--allow-raw icmp lets a raw socket of AF_INET or AF_INET6 through)"
+            crate::log::info(
+                "a raw or packet socket gets EPERM (--allow-raw icmp lets a raw socket of AF_INET or AF_INET6 through)",
             );
         }
         return notif_respond(lfd, id, -1, libc::EPERM);
@@ -170,11 +170,7 @@ pub(crate) fn handle_socket(
         map.insert(key, entry);
     }
     if verbose {
-        eprintln!(
-            "{}: {}",
-            crate::cli::program_name(),
-            emulation_line(domain, kind, icmp)
-        );
+        crate::log::info(&emulation_line(domain, kind, icmp));
     }
     Ok(())
 }

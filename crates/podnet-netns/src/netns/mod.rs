@@ -78,7 +78,7 @@ fn run_router(args: Args, reporter: crate::outlive::Reporter) -> Result<i32> {
         let result = child_setup(child, &args);
         // child_setup only returns on error; it execs on success.
         if let Err(e) = result {
-            eprintln!("{}: {e:#}", program_name());
+            crate::log::write_exit(EXIT_NO_BACKEND, &format!("{e:#}"));
             unsafe { libc::_exit(EXIT_NO_BACKEND) };
         }
         unsafe { libc::_exit(0) };
@@ -115,10 +115,7 @@ fn run_router(args: Args, reporter: crate::outlive::Reporter) -> Result<i32> {
             loopdns::serve(sockets, backend.dns_asker())?;
         }
         if verbose && backend.device.wire == Wire::Veth {
-            eprintln!(
-                "{}: the wire of the namespace is a veth pair (no TUN)",
-                program_name()
-            );
+            crate::log::info("the wire of the namespace is a veth pair (no TUN)");
         }
         let fd = backend.device.fd;
         let async_fd = crate::readable_copy(fd)?;
@@ -157,10 +154,9 @@ fn run_router(args: Args, reporter: crate::outlive::Reporter) -> Result<i32> {
                     return Ok(code);
                 }
                 if verbose {
-                    eprintln!(
-                        "{}: the program exited {code}; the pod stays while its other processes live",
-                        program_name()
-                    );
+                    crate::log::info(&format!(
+                        "the program exited {code}; the pod stays while its other processes live"
+                    ));
                 }
                 reporter.report(code, verbose);
                 first = Some(code);

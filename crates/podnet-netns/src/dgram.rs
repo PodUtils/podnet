@@ -25,12 +25,11 @@ pub(crate) fn fits_relay(len: usize, ip: IpAddr, name: Option<&str>) -> Result<(
     let header = match (name, ip) {
         (Some(name), _) if name.len() > MAX_NAME => {
             let start: String = name.chars().take(40).collect();
-            eprintln!(
-                "{}: UDP to the name {start}... ({} bytes) refused with EINVAL: \
+            crate::log::warn(&format!(
+                "UDP to the name {start}... ({} bytes) refused with EINVAL: \
                  SOCKS5 carries a name of 255 bytes at most, and this one is over 255 bytes",
-                crate::cli::program_name(),
                 name.len()
-            );
+            ));
             return Err(libc::EINVAL);
         }
         (Some(name), _) => 4 + 1 + name.len() + 2,

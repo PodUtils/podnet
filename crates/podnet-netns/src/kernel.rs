@@ -42,7 +42,7 @@ fn run_pod(args: Args, reporter: crate::outlive::Reporter) -> Result<i32> {
         unsafe { libc::close(parent) };
         reporter.close_in_child();
         if let Err(e) = child_setup(child, &args) {
-            eprintln!("{}: {e:#}", program_name());
+            crate::log::write_exit(EXIT_NO_BACKEND, &format!("{e:#}"));
             // SAFETY: the child ends here.
             unsafe { libc::_exit(EXIT_NO_BACKEND) };
         }
@@ -100,10 +100,9 @@ fn run_pod(args: Args, reporter: crate::outlive::Reporter) -> Result<i32> {
                     return Ok(code);
                 }
                 if verbose {
-                    eprintln!(
-                        "{}: the program exited {code}; the pod stays while its other processes live",
-                        program_name()
-                    );
+                    crate::log::info(&format!(
+                        "the program exited {code}; the pod stays while its other processes live"
+                    ));
                 }
                 reporter.report(code, verbose);
                 first = Some(code);

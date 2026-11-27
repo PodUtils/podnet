@@ -99,11 +99,10 @@ pub(crate) fn handle_setsockopt(
     };
     let (level, name, optval, len) = (a[1] as i32, a[2] as i32, a[3], a[4] as usize);
     if verbose {
-        eprintln!(
-            "{}: setsockopt answered by the pod (fd {}, level {level}, option {name})",
-            crate::cli::program_name(),
+        crate::log::info(&format!(
+            "setsockopt answered by the pod (fd {}, level {level}, option {name})",
             a[0] as i32
-        );
+        ));
     }
     if let Some(options) = options_of(entry) {
         if optval != 0 && len > 0 && len <= MAX_OPTION {

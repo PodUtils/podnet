@@ -29,11 +29,7 @@ pub(crate) async fn serve_front_door(
     let (listener, bound) = bind_front_door(&listen).await?;
     // Issue 300: the bound address, so a TCP port 0 shows the port that
     // the kernel chose.
-    eprintln!(
-        "{}: serving {bound} ({} upstream)",
-        crate::cli::program_name(),
-        chain.len()
-    );
+    crate::log::info(&format!("serving {bound} ({} upstream)", chain.len()));
     let door = Arc::new(front_door_with(chain, rules, verbose, early_reply));
     let serve = async {
         match listener {
@@ -47,7 +43,7 @@ pub(crate) async fn serve_front_door(
     let result = tokio::select! {
         result = serve => result,
         name = stop_signal() => {
-            eprintln!("{}: {name}: stopping", crate::cli::program_name());
+            crate::log::info(&format!("{name}: stopping"));
             Ok(())
         }
     };
@@ -109,7 +105,7 @@ pub(crate) fn front_door_with(
     }
     door.on_error(Arc::new(move |e: &anyhow::Error| {
         if verbose {
-            eprintln!("{}: front door: {e:#}", crate::cli::program_name());
+            crate::log::warn(&format!("front door: {e:#}"));
         }
     }))
 }
@@ -215,21 +211,16 @@ impl Dial for PodDial {
                 ));
             };
             if self.verbose {
-                eprintln!(
-                    "{}: front door {text} via {}",
-                    crate::cli::program_name(),
-                    selected[0].endpoint()
-                );
+                crate::log::info(&format!("front door {text} via {}", selected[0].endpoint()));
             }
             let handshake = if self.early_reply {
                 let (verbose, shown) = (self.verbose, text.clone());
                 Handshake::Optimistic(Arc::new(move |code| {
                     crate::flowlog::refused(flow, &shown, code);
                     if verbose {
-                        eprintln!(
-                            "{}: front door {shown}: the upstream refused with code {code}",
-                            crate::cli::program_name()
-                        );
+                        crate::log::warn(&format!(
+                            "front door {shown}: the upstream refused with code {code}"
+                        ));
                     }
                 }))
             } else {
@@ -251,7 +242,7 @@ impl Dial for PodDial {
                     // T-527: the failure keeps its cause; the door takes the
                     // reply code from its type, not from its words.
                     if self.verbose {
-                        eprintln!("{}: front door: {e:#}", crate::cli::program_name());
+                        crate::log::warn(&format!("front door: {e:#}"));
                     }
                     Err(Failure::caused(
                         Stage::Proxy,
@@ -363,10 +354,7 @@ where
     let (_up_control, up_addr) = socks5_udp_associate(up_control, proxy).await?;
     let up = Arc::new(tokio::net::UdpSocket::bind("0.0.0.0:0").await?);
     if verbose {
-        eprintln!(
-            "{}: front door UDP relay {addr} -> {up_addr}",
-            crate::cli::program_name()
-        );
+        crate::log::info(&format!("front door UDP relay {addr} -> {up_addr}"));
     }
 
     let client: Arc<tokio::sync::Mutex<Option<SocketAddr>>> =

@@ -503,7 +503,7 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
         })
         .collect();
     for warning in crate::rules::shadow::check(&lint, allow_shadowed)? {
-        eprintln!("{}: warning: {warning}", program_name());
+        crate::log::warn(&format!("warning: {warning}"));
     }
     // T-157: a target that no rule matches is refused: a last rule that
     // matches each target.

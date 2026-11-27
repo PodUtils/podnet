@@ -158,6 +158,7 @@ fn main() {
         cli.log_format == "json",
         std::sync::atomic::Ordering::Relaxed,
     );
+    podnet_netns::set_log_json(cli.log_format == "json");
     // Issue 115: -q silences the warnings of the pod too. No thread runs
     // yet.
     if cli.quiet {
@@ -168,7 +169,12 @@ fn main() {
     // pod too; before, it panicked. Still one thread: the pod forks.
     if let Command::Pod { args } = &cli.command {
         if let Some(option) = pod_network_option(&cli) {
-            eprintln!("podnet: podnet pod does not use {option}; give the proxy to the pod with -x (podnet pod --help)");
+            print_error(
+                &format!(
+                    "podnet: podnet pod does not use {option}; give the proxy to the pod with -x (podnet pod --help)"
+                ),
+                podnet::exit::USAGE,
+            );
             std::process::exit(podnet::exit::USAGE);
         }
         let pod_args = pod_args_of(&argv, args);
@@ -374,8 +380,12 @@ fn pod_variables(args: &[String]) {
         return;
     }
     if let Err(err) = cli::opts::variable_checks() {
-        eprintln!("podnet pod: {}", podnet::report::chain_text(&err));
-        std::process::exit(podnet::exit::code_of(&err));
+        let code = podnet::exit::code_of(&err);
+        print_error(
+            &format!("podnet pod: {}", podnet::report::chain_text(&err)),
+            code,
+        );
+        std::process::exit(code);
     }
 }
 

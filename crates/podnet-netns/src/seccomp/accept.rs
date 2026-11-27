@@ -109,11 +109,10 @@ pub(crate) async fn handle_listen(
     }
     notif_respond(lfd, id, 0, 0)?;
     // The listener is a real unix socket; say where it is.
-    eprintln!(
-        "{}: listening on unix:{} (port {port})",
-        crate::cli::program_name(),
+    crate::log::info(&format!(
+        "listening on unix:{} (port {port})",
         path.display()
-    );
+    ));
     Ok(())
 }
 
@@ -147,10 +146,9 @@ fn install_accepted(
     // ADDFD with SEND already answers the syscall with the installed fd.
     notif_addfd_send(lfd, id, conn.as_raw_fd(), newfd_flags)?;
     if verbose {
-        eprintln!(
-            "{}: accept on port {port}: the program holds the connection (no relay)",
-            crate::cli::program_name()
-        );
+        crate::log::info(&format!(
+            "accept on port {port}: the program holds the connection (no relay)"
+        ));
     }
     Ok(())
 }

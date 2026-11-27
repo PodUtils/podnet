@@ -66,7 +66,7 @@ impl Report {
 
     /// Print `text` on stderr as an error, record it, and return `code`.
     pub(crate) fn fail(&self, code: i32, text: &str) -> i32 {
-        eprintln!("{}: {text}", crate::cli::program_name());
+        crate::log::write_exit(code, text);
         self.reason(text);
         code
     }

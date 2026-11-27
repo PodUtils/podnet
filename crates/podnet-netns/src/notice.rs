@@ -98,7 +98,7 @@ fn show_in(shown: &mut HashSet<String>, key: &str) -> Show {
 /// always, else for the first failure of `target` only.
 pub(crate) fn connect_failed(target: &str, line: &str, verbose: bool) {
     if verbose {
-        eprintln!("{}: {line}", crate::cli::program_name());
+        crate::log::warn(line);
         return;
     }
     if through_dead(line) {
