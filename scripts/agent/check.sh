@@ -12,6 +12,21 @@
 #   sh scripts/agent/check.sh [notest]
 set -u
 cd "$(dirname "$0")/../.." || exit 1
+if [ -z "${RUSTUP_TOOLCHAIN:-}" ]; then
+    if [ -x "$PWD/.work/cloud/cargo/bin/cargo" ]; then
+        # shellcheck source=scripts/cloud-env.sh
+        . ./scripts/cloud-env.sh
+    elif command -v rustup > /dev/null 2>&1; then
+        pin=$(sed -n 's/^  RUST_TOOLCHAIN: "\([^"]*\)"$/\1/p' .github/workflows/ci.yml)
+        if [ -n "$pin" ] && rustup toolchain list 2> /dev/null | grep -Fq "$pin"; then
+            CARGO_HOME=${CARGO_HOME:-${HOME:-}/.cargo}
+            RUSTUP_HOME=${RUSTUP_HOME:-${HOME:-}/.rustup}
+            # shellcheck source=scripts/cloud-env.sh
+            . ./scripts/cloud-env.sh
+        fi
+        unset pin
+    fi
+fi
 log=${TMPDIR:-/tmp}/podnet-check
 mkdir -p "$log"
 rc=0
@@ -52,7 +67,13 @@ else
 fi
 python3 -I scripts/check-install.py > "$log/install.log" 2>&1; i=$?
 echo "install $i"; [ "$i" -eq 0 ] || { rc=1; head -20 "$log/install.log"; }
-python3 scripts/check-workflows.py > "$log/workflows.log" 2>&1; w=$?
+wf_py=python3
+if ! "$wf_py" -c 'import yaml' > /dev/null 2>&1 &&
+   [ -x /usr/bin/python3 ] &&
+   /usr/bin/python3 -c 'import yaml' > /dev/null 2>&1; then
+    wf_py=/usr/bin/python3
+fi
+"$wf_py" scripts/check-workflows.py > "$log/workflows.log" 2>&1; w=$?
 echo "workflows $w"; [ "$w" -eq 0 ] || { rc=1; head -20 "$log/workflows.log"; }
 # The shell scripts, as the job "workflows" of CI checks them.
 if command -v shellcheck > /dev/null 2>&1; then

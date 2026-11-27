@@ -14,6 +14,7 @@ categories = ["network-programming", "command-line-utilities"]
 # The files of the repository that the build and the tests of the crate do
 # not read (#221).
 exclude = [
+  "/.agents",
   "/.claude",
   "/.github",
   "/CLAUDE.md",

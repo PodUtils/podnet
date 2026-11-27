@@ -2701,7 +2701,7 @@ The rules of the issue that apply to this row:
 
 ## Premise
 
-- No `include/` directory and no `podnet.h` exist. `Cargo.toml` has `[lib]` with no `crate-type` (`Cargo.toml:56`).
+- No `include/` directory and no `podnet.h` exist. `Cargo.toml` has `[lib]` with no `crate-type` (`Cargo.toml:57`).
 - A flaw to resolve: the release binaries are static musl builds (`docs/build.md`). A `cdylib` does not build for a static musl target in the default setup. The shared library needs a dynamic target, or `-C target-feature=-crt-static`.
 - `catch_unwind` needs `panic = "unwind"`. The release profile sets no `panic` key (`Cargo.toml` `[profile.release]`), so it unwinds.
 - Read on 2026-11-12 at 505dfa0. Nothing was built or measured for this entry.

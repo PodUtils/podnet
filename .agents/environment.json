@@ -1,0 +1,3 @@
+{
+  "install": "sh scripts/session-start.sh --no-watchers && sh scripts/cloud-setup.sh --dev-tools"
+}

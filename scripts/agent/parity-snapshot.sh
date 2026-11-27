@@ -22,6 +22,21 @@ map=${3:-}
 mkdir -p "$out" || exit 64
 out=$(cd "$out" && pwd)
 cd "$here/../.." || exit 64
+if [ -z "${RUSTUP_TOOLCHAIN:-}" ]; then
+    if [ -x "$PWD/.work/cloud/cargo/bin/cargo" ]; then
+        # shellcheck source=scripts/cloud-env.sh
+        . ./scripts/cloud-env.sh
+    elif command -v rustup > /dev/null 2>&1; then
+        pin=$(sed -n 's/^  RUST_TOOLCHAIN: "\([^"]*\)"$/\1/p' .github/workflows/ci.yml)
+        if [ -n "$pin" ] && rustup toolchain list 2> /dev/null | grep -Fq "$pin"; then
+            CARGO_HOME=${CARGO_HOME:-${HOME:-}/.cargo}
+            RUSTUP_HOME=${RUSTUP_HOME:-${HOME:-}/.rustup}
+            # shellcheck source=scripts/cloud-env.sh
+            . ./scripts/cloud-env.sh
+        fi
+        unset pin
+    fi
+fi
 skip=${PARITY_SKIP:-}
 on() { case " $skip " in *" $1 "*) return 1 ;; esac; return 0; }
 

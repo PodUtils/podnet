@@ -13,8 +13,8 @@ Use [TODO/RESUME.md](TODO/RESUME.md) to start a hosted session.
 - Do not add `Co-Authored-By`, `Claude-Session`, "Generated with" or other
   agent attribution lines to commits, pull requests, comments or files.
 - Commit and push to `origin main` after each completed step.
-- `scripts/session-start.sh` sets the local identity and branch for both Claude
-  Code and Codex, and turns off commit signing for this repository.
+- `scripts/session-start.sh` sets the local identity and branch for Claude
+  Code, Codex and Antigravity, and turns off commit signing for this repository.
 - If `git rev-parse --is-shallow-repository` prints `true`, run
   `git fetch --unshallow origin main` before reading a release range.
 
@@ -48,7 +48,7 @@ Use [TODO/RESUME.md](TODO/RESUME.md) to start a hosted session.
 - Use shell tools (`git`, `curl`, `cargo`) before MCP tools.
 - For search, research and read-only queries (this includes the GitHub REST
   API), always use the services that <https://web.pkgforge.dev/llms.txt> lists,
-  with `curl`. Use WebSearch, WebFetch, `gh` or a clone only when no service of
+  with `curl`. Use the web tools of the harness, `gh` or a clone only when no service of
   that list answers. Read the service's `llms.txt` before its first use.
   - Search: `search.web.pkgforge.dev`. A page as Markdown:
     `curl -qfsS https://read.web.pkgforge.dev/URL`.
@@ -211,7 +211,7 @@ issues are the channel, and each session watches them
   certificate identity and the signature of the cosign bundle over
   SHA256SUMS, with the shared verifier of `pod-release`. It also checks the
   entry of Rekor and the timestamps. podnet keeps no own verifier (T-494).
-- Issues: a watcher polls for new issues. A Sonnet agent triages each new
+- Issues: a watcher polls for new issues. A Housekeeper agent triages each new
   issue into record entries. Close each issue through the record, with
   evidence (commits, CI runs, test output) in the Done sections.
 - Shared code first (the owner, 2026-11-17; `PodUtils/podcrates:docs/session-protocol.md`):

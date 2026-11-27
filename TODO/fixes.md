@@ -4040,7 +4040,7 @@ above. The check to satisfy is: no other user can connect, at any instant.
   (`crates/podnet-netns/src/seccomp/accept.rs:58`), and it removes the old file before the bind (`crates/podnet-netns/src/seccomp/accept.rs:59`).
 - The defaults in `/tmp`: `src/cli/cmd/net/mod.rs:80`, `src/cli/cmd/net/mod.rs:97` and
   `src/cli/cmd/net/mod.rs:177` (and `/tmp/podnet-vnet.switch` at `src/cli/cmd/net/mod.rs:248`).
-- `libc` is a dependency (`Cargo.toml:201`, `crates/podnet-netns/Cargo.toml:24`). No code calls
+- `libc` is a dependency (`Cargo.toml:202`, `crates/podnet-netns/Cargo.toml:24`). No code calls
   `renameat2` yet.
 - T-186 (done, GitHub #385) added `claim_unix_path` and `bind_claimed`. They do not cover the interval.
   GitHub #306 (closed) fixed the inbound directory of `accept.rs` only.

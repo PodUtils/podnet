@@ -483,5 +483,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #796 | [qa 0.4.0-beta.21] warp: a WARP identity file with mode 0644 exits 78, man exit-status gives 71 for this cause | open (T-630) | T-630 |
 | #797 | [qa 0.4.0-beta.21] warp proxy: the help and docs/warp.md give two rule kinds, but the binary takes four | open (T-631) | T-631 |
 | #798 | [qa 0.4.0-beta.21] pod: --log-format json does not apply; the lines of the pod stay plain text | open (T-632) | T-632 |
+| #799 | COORD-141: hosted-sessions role table and startup flags for Gemini / Antigravity Cloud (to podcrates) | open (a COORD issue between sessions) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556, #557 and #680 to #684 are closed; they are pull requests.
