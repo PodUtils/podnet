@@ -144,6 +144,8 @@ pub struct TunnelHandle {
 pub enum RelayError {
     /// The `host:port` string could not be split.
     BadAddress(String),
+    /// The relay host name did not resolve.
+    NoHost(String),
     /// The SSH key could not be generated.
     Key(String),
     /// The TCP/CONNECT transport could not be opened.
@@ -154,11 +156,38 @@ pub enum RelayError {
     NoUrl,
 }
 
+impl RelayError {
+    /// The fault class of this error for the CLI exit code (T-624).
+    pub fn fault(&self) -> podnet_core::exit::Fault {
+        match self {
+            RelayError::BadAddress(_) => podnet_core::exit::Fault::Usage,
+            RelayError::NoHost(_) => podnet_core::exit::Fault::NoHost,
+            RelayError::Key(_)
+            | RelayError::Transport(_)
+            | RelayError::Ssh(_)
+            | RelayError::NoUrl => podnet_core::exit::Fault::Unavailable,
+        }
+    }
+
+    /// The exit code of this error: 68 for an unresolved host, 69 for an
+    /// unreachable relay, 64 for a bad address.
+    pub fn exit_code(&self) -> i32 {
+        self.fault().code()
+    }
+}
+
 impl std::fmt::Display for RelayError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             RelayError::BadAddress(a) => {
                 write!(f, "expected relay address as host:port, got {a:?}")
+            }
+            RelayError::NoHost(e) => {
+                if e.contains("could not resolve") {
+                    write!(f, "{e}")
+                } else {
+                    write!(f, "could not resolve the relay: {e}")
+                }
             }
             RelayError::Key(e) => write!(f, "could not prepare an SSH client key: {e}"),
             RelayError::Transport(e) => write!(f, "could not open a transport to the relay: {e}"),
@@ -434,17 +463,42 @@ async fn connect_address(
         // T-474: the way of the process (its proxy, its egress, its names).
         let target = pod_core::Target::new(&host, port);
         let deadline = tokio::time::Instant::now() + config.connect_timeout;
-        let connected = dial
-            .0
-            .dial(&target, deadline)
-            .await
-            .map_err(|e| RelayError::Transport(e.to_string()))?;
+        let connected = dial.0.dial(&target, deadline).await.map_err(|e| {
+            if e.stage == pod_core::Stage::Dns {
+                RelayError::NoHost(e.to_string())
+            } else {
+                RelayError::Transport(e.to_string())
+            }
+        })?;
         return Ok(PrefixedStream::new(Vec::new(), connected.io));
     }
     let Some(proxy_addr) = &config.proxy else {
-        let stream = tokio::net::TcpStream::connect((host.as_str(), port))
-            .await
-            .map_err(|e| RelayError::Transport(e.to_string()))?;
+        let secs = config.connect_timeout.as_secs().max(1);
+        let addrs = tokio::time::timeout(
+            config.connect_timeout,
+            tokio::net::lookup_host((host.as_str(), port)),
+        )
+        .await
+        .map_err(|_| {
+            RelayError::Transport(format!(
+                "DNS lookup for {host}:{port} timed out after {secs} s"
+            ))
+        })?
+        .map_err(|e| RelayError::NoHost(format!("could not resolve {host}: {e}")))?;
+        let Some(addr) = addrs.into_iter().next() else {
+            return Err(RelayError::NoHost(format!(
+                "could not resolve {host}: no address"
+            )));
+        };
+        let stream =
+            tokio::time::timeout(config.connect_timeout, tokio::net::TcpStream::connect(addr))
+                .await
+                .map_err(|_| {
+                    RelayError::Transport(format!(
+                        "connect to {host}:{port} timed out after {secs} s"
+                    ))
+                })?
+                .map_err(|e| RelayError::Transport(e.to_string()))?;
         return Ok(PrefixedStream::new(Vec::new(), stream));
     };
 
@@ -555,15 +609,35 @@ pub async fn open(config: &RelayConfig) -> Result<Live, RelayError> {
     let served = Arc::new(Mutex::new(0u64));
     let client = Client::new(config.unix_socket.clone(), served);
 
-    let mut handle = russh::client::connect_stream(Arc::clone(&ssh_config), stream, client)
-        .await
-        .map_err(|e| RelayError::Ssh(format!("handshake failed: {e}")))?;
+    let limit = config.connect_timeout;
+    let secs = limit.as_secs().max(1);
+    let mut handle = tokio::time::timeout(
+        limit,
+        russh::client::connect_stream(Arc::clone(&ssh_config), stream, client),
+    )
+    .await
+    .map_err(|_| {
+        RelayError::Ssh(format!(
+            "the relay {} did not answer the SSH handshake in {secs} s",
+            config.address
+        ))
+    })?
+    .map_err(|e| RelayError::Ssh(format!("handshake failed: {e}")))?;
 
     // Try the methods in order (see `auth`): the ephemeral key, no key, and
     // an empty keyboard-interactive answer. The free tier takes one of them.
-    match auth::authenticate(&mut handle, &config.username, Arc::clone(&private_key))
-        .await
-        .map_err(|e| RelayError::Ssh(format!("auth failed: {e}")))?
+    match tokio::time::timeout(
+        limit,
+        auth::authenticate(&mut handle, &config.username, Arc::clone(&private_key)),
+    )
+    .await
+    .map_err(|_| {
+        RelayError::Ssh(format!(
+            "the relay {} did not answer SSH authentication in {secs} s",
+            config.address
+        ))
+    })?
+    .map_err(|e| RelayError::Ssh(format!("auth failed: {e}")))?
     {
         auth::Login::In(_) => {}
         auth::Login::Refused(why) => {
@@ -577,9 +651,14 @@ pub async fn open(config: &RelayConfig) -> Result<Live, RelayError> {
     // Ask for the remote port of the config. Port 0 asks for an ephemeral
     // port: the relay decides the number and, with it, the public URL.
     let asked = u32::from(config.remote_port.unwrap_or(0));
-    let assigned = handle
-        .tcpip_forward(FORWARD_BIND, asked)
+    let assigned = tokio::time::timeout(limit, handle.tcpip_forward(FORWARD_BIND, asked))
         .await
+        .map_err(|_| {
+            RelayError::Ssh(format!(
+                "the relay {} did not answer the remote forward request in {secs} s",
+                config.address
+            ))
+        })?
         .map_err(|e| RelayError::Ssh(format!("remote forward refused: {e}")))?;
     // The reply names a port only for a request of port 0.
     let remote_port = if asked == 0 { assigned } else { asked };
@@ -588,13 +667,23 @@ pub async fn open(config: &RelayConfig) -> Result<Live, RelayError> {
     // the forwarded-tcpip channels a visitor opens. Open a session channel and
     // request a shell so the relay writes its banner to us, then read from that
     // channel to recover the URL.
-    let mut session_channel = handle
-        .channel_open_session()
+    let mut session_channel = tokio::time::timeout(limit, handle.channel_open_session())
         .await
+        .map_err(|_| {
+            RelayError::Ssh(format!(
+                "the relay {} did not open a session channel in {secs} s",
+                config.address
+            ))
+        })?
         .map_err(|e| RelayError::Ssh(format!("session channel refused: {e}")))?;
-    session_channel
-        .request_shell(true)
+    tokio::time::timeout(limit, session_channel.request_shell(true))
         .await
+        .map_err(|_| {
+            RelayError::Ssh(format!(
+                "the relay {} did not answer the shell request in {secs} s",
+                config.address
+            ))
+        })?
         .map_err(|e| RelayError::Ssh(format!("shell request failed: {e}")))?;
 
     // Drain the shell channel for the URL. The relay prints several URLs: an

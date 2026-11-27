@@ -257,8 +257,10 @@ ssh -o ProxyCommand='podnet derp connect TICKET' USER@HOST
 
 Some hosted relays give a public URL for a unix socket through an SSH remote forward on port 443 (the
 server prints the URL in its banner). `podnet ssh-relay` is the client for them. It publishes a unix
-socket and keeps the session: when the relay ends the session, podnet connects again with a backoff and
-prints the new URL.
+socket and keeps the session: when the relay ends a running session, podnet connects again with a backoff
+and prints the new URL. If the first start fails before a session comes up, podnet prints the cause and
+exits with no retry: exit 68 when the relay name does not resolve, or exit 69 when the relay or proxy
+cannot be reached or does not answer in time.
 
 ```sh
 podnet ssh-relay --socket /run/user/1000/origin.sock --detach

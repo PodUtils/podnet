@@ -360,12 +360,14 @@ mod fake {
     use ssh_key::getrandom::SysRng;
 
     /// How the first connection ends after its banner.
-    #[derive(Clone, Copy, Debug)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
     pub enum End {
         /// The relay closes the banner channel.
         Channel,
         /// The relay ends the connection.
         Connection,
+        /// The relay ends the first connection and stops listening.
+        Once,
     }
 
     struct Conn {
@@ -432,7 +434,7 @@ mod fake {
             if self.number == 1 {
                 match self.end {
                     End::Channel => session.close(channel)?,
-                    End::Connection => {
+                    End::Connection | End::Once => {
                         session.disconnect(Disconnect::ByApplication, "bye", "")?;
                     }
                 }
@@ -474,6 +476,9 @@ mod fake {
                         let _ = running.await;
                     }
                 });
+                if end == End::Once {
+                    break;
+                }
             }
         });
         (address, count)
@@ -556,24 +561,22 @@ async fn the_supervisor_sees_a_connection_that_the_relay_ends() {
 }
 
 #[tokio::test]
-async fn the_supervisor_tries_again_when_the_relay_is_not_there() {
+async fn the_supervisor_tries_again_after_a_session_drops_and_the_relay_is_gone() {
     pod_testkit::need_loopback!();
-    // A port with no listener: each connect is refused. The socket keeps
-    // the port bound with no listen, so another test cannot take it (a
-    // freed port was taken by a fake relay of another test: the handshake
-    // met a stranger, ci 44200604223).
-    let (held, at) = pod_testkit::refused::refused();
-    let address = at.to_string();
+    // T-624: a session that already came up retries with backoff when the
+    // relay goes away later.
+    let (address, _) = fake::start(fake::End::Once).await;
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
     let task = tokio::spawn(supervise(test_config(address), FAST, tx));
-    for _ in 0..3 {
+    assert!(matches!(next_event(&mut rx).await, Event::Up(_)));
+    assert!(matches!(next_event(&mut rx).await, Event::Down { .. }));
+    for _ in 0..2 {
         match next_event(&mut rx).await {
             Event::Down { reason } => assert!(reason.contains("transport"), "{reason}"),
-            other => panic!("no relay, no Up: {other:?}"),
+            other => panic!("relay stopped listening, expected Down: {other:?}"),
         }
     }
     task.abort();
-    drop(held);
 }
 
 #[tokio::test]
@@ -587,7 +590,8 @@ async fn the_supervisor_ends_when_nobody_listens_to_its_events() {
         supervise(test_config(address), FAST, tx),
     )
     .await
-    .expect("the supervisor returns");
+    .expect("the supervisor returns")
+    .expect("the first start succeeded before rx dropped");
 }
 
 mod probe_tests {

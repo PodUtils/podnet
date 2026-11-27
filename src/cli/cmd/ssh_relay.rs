@@ -205,21 +205,27 @@ fn amend_record(record: &mut podnet::instances::Record, new: &serde_json::Value)
     }
 }
 
-/// Run the leg until a stop signal.
+/// Run the leg until a stop signal or a failed first start.
 pub(crate) async fn ssh_relay(args: SshRelayArgs) -> Result<()> {
     let config = args.config()?;
+    run_with_config(config, args.json, args.run_for).await
+}
+
+/// Run the supervisor loop for `config` until a stop signal or a failed first
+/// start (T-624).
+async fn run_with_config(config: RelayConfig, json: bool, run_for: Option<u64>) -> Result<()> {
     let relay = config.address.clone();
     let (events, mut received) = tokio::sync::mpsc::unbounded_channel();
-    let task = tokio::spawn(supervise(config, Backoff::default(), events));
+    let mut task = tokio::spawn(supervise(config, Backoff::default(), events));
     let mut first = true;
-    let end = sleep_or_signal(args.run_for);
+    let end = sleep_or_signal(run_for);
     tokio::pin!(end);
-    let result = loop {
+    loop {
         tokio::select! {
             event = received.recv() => match event {
                 Some(Event::Up(tunnel)) => {
                     let doc = document(&tunnel, &relay);
-                    if args.json {
+                    if json {
                         let name = if first { "ready" } else { "reconnected" };
                         let mut line = doc.clone();
                         line["event"] = name.into();
@@ -240,14 +246,24 @@ pub(crate) async fn ssh_relay(args: SshRelayArgs) -> Result<()> {
                 Some(Event::Down { reason }) => {
                     println!("podnet: ssh-relay  down: {reason}; the supervisor connects again");
                 }
-                None => break Err(anyhow::anyhow!("the supervisor of the relay session ended"))
-                    .fault(Fault::Unavailable),
+                None => match (&mut task).await {
+                    Ok(Err(err)) => {
+                        let fault = err.fault();
+                        return Err(anyhow::Error::from(err)).fault(fault);
+                    }
+                    Ok(Ok(())) => return Ok(()),
+                    Err(_) => {
+                        return Err(anyhow::anyhow!("the supervisor of the relay session ended"))
+                            .fault(Fault::Unavailable);
+                    }
+                },
             },
-            _ = &mut end => break Ok(()),
+            _ = &mut end => {
+                task.abort();
+                return Ok(());
+            }
         }
-    };
-    task.abort();
-    result
+    }
 }
 
 #[cfg(test)]
@@ -432,5 +448,76 @@ mod tests {
         assert_eq!(ready["url"], "https://two");
         assert_eq!(ready["name"], "x");
         assert_eq!(ready["pid"], 7);
+    }
+
+    #[tokio::test]
+    async fn first_start_failures_exit_with_69_or_68_and_bound_silent_servers() {
+        pod_testkit::need_loopback!();
+        use std::time::Duration;
+
+        let (_held_refused, refused) = pod_testkit::refused::refused();
+        let (_held_proxy, dead_proxy) = pod_testkit::refused::refused();
+
+        let silent = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let silent_addr = silent.local_addr().unwrap().to_string();
+        let _server = tokio::spawn(async move {
+            let mut held = Vec::new();
+            while let Ok((s, _)) = silent.accept().await {
+                held.push(s);
+            }
+        });
+
+        let cases = [
+            (
+                "refused port",
+                refused.to_string(),
+                None,
+                podnet::exit::UNAVAILABLE,
+                "transport",
+            ),
+            (
+                "dead proxy",
+                "relay.example.test:443".to_string(),
+                Some(dead_proxy.to_string()),
+                podnet::exit::UNAVAILABLE,
+                "transport",
+            ),
+            (
+                "unresolved host",
+                "nothing.invalid:443".to_string(),
+                None,
+                podnet::exit::NO_HOST,
+                "could not resolve",
+            ),
+            (
+                "silent server",
+                silent_addr,
+                None,
+                podnet::exit::UNAVAILABLE,
+                "did not answer",
+            ),
+        ];
+
+        for (name, address, proxy, want_code, want_text) in cases {
+            let cfg = podnet::relay::RelayConfig {
+                address,
+                proxy,
+                dial: None,
+                username: "test".into(),
+                connect_timeout: Duration::from_millis(300),
+                inactivity: None,
+                ..podnet::relay::RelayConfig::default()
+            };
+            let err = tokio::time::timeout(
+                Duration::from_secs(3),
+                super::run_with_config(cfg, false, None),
+            )
+            .await
+            .unwrap_or_else(|_| panic!("{name}: ssh-relay hung on first start"))
+            .expect_err(&format!("{name}: expected failure"));
+            assert_eq!(podnet::exit::code_of(&err), want_code, "{name}: {err:#}");
+            let text = format!("{err:#}");
+            assert!(text.contains(want_text), "{name}: {text}");
+        }
     }
 }

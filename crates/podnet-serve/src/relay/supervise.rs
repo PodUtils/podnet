@@ -12,7 +12,7 @@ use std::time::{Duration, Instant};
 use russh::ChannelMsg;
 use tokio::sync::mpsc::UnboundedSender;
 
-use super::{open, Live, RelayConfig, TunnelHandle};
+use super::{open, Live, RelayConfig, RelayError, TunnelHandle};
 
 /// A change of the state of the leg.
 #[derive(Debug, Clone)]
@@ -59,16 +59,24 @@ impl Backoff {
 
 /// Keep one session of `config` open, and send an [`Event`] at each change.
 ///
-/// The future ends only when the receiver of `events` is dropped. Drop the
-/// future to stop: that closes the live session.
-pub async fn supervise(config: RelayConfig, backoff: Backoff, events: UnboundedSender<Event>) {
+/// If the first session fails to start, return its [`RelayError`] with no
+/// retry (T-624). Once a session is up, a later drop retries with `backoff`
+/// until the receiver of `events` is dropped. Drop the future to stop: that
+/// closes the live session.
+pub async fn supervise(
+    config: RelayConfig,
+    backoff: Backoff,
+    events: UnboundedSender<Event>,
+) -> Result<(), RelayError> {
     let mut delay = backoff.initial;
+    let mut started_once = false;
     loop {
         let reason = match open(&config).await {
             Ok(session) => {
+                started_once = true;
                 let started = Instant::now();
                 if events.send(Event::Up(session.tunnel.clone())).is_err() {
-                    return;
+                    return Ok(());
                 }
                 let reason = wait_end(session).await;
                 if started.elapsed() >= backoff.stable {
@@ -76,11 +84,12 @@ pub async fn supervise(config: RelayConfig, backoff: Backoff, events: UnboundedS
                 }
                 reason
             }
+            Err(err) if !started_once => return Err(err),
             Err(err) => err.to_string(),
         };
         tracing::warn!(relay = %config.address, %reason, retry_in = ?delay, "the relay session is down");
         if events.send(Event::Down { reason }).is_err() {
-            return;
+            return Ok(());
         }
         tokio::time::sleep(delay).await;
         delay = backoff.next(delay);
@@ -111,5 +120,70 @@ async fn wait_end(session: Live) -> String {
                 }
             }
         }
+    }
+}
+
+/// T-624 (GitHub #790): when the first start fails, the supervisor ends
+/// immediately with the exit code (69 unavailable, 68 unresolved name) and
+/// the cause line instead of retrying forever.
+#[cfg(test)]
+#[tokio::test]
+async fn a_first_start_that_fails_ends_with_the_exit_code() {
+    pod_testkit::need_loopback!();
+    let (_held, refused) = pod_testkit::refused::refused();
+
+    // Silent server: accepts TCP and never writes.
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let silent_addr = listener.local_addr().unwrap().to_string();
+    let _server = tokio::spawn(async move {
+        let mut held = Vec::new();
+        while let Ok((s, _)) = listener.accept().await {
+            held.push(s);
+        }
+    });
+
+    let cases = [
+        (
+            "refused port",
+            refused.to_string(),
+            podnet_core::exit::UNAVAILABLE,
+            "transport",
+        ),
+        (
+            "unresolved name",
+            "nothing.invalid:443".to_string(),
+            podnet_core::exit::NO_HOST,
+            "could not resolve",
+        ),
+        (
+            "silent server",
+            silent_addr,
+            podnet_core::exit::UNAVAILABLE,
+            "did not answer",
+        ),
+    ];
+
+    for (name, address, want_code, want_text) in cases {
+        let cfg = RelayConfig {
+            address,
+            username: "test".into(),
+            inactivity: None,
+            connect_timeout: Duration::from_millis(300),
+            ..RelayConfig::default()
+        };
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+        let outcome = tokio::time::timeout(
+            Duration::from_secs(3),
+            supervise(cfg, Backoff::default(), tx),
+        )
+        .await
+        .unwrap_or_else(|_| panic!("{name}: first start did not end"));
+        let err = outcome.expect_err(&format!("{name}: expected failure"));
+        assert_eq!(err.exit_code(), want_code, "{name}: {err}");
+        assert!(err.to_string().contains(want_text), "{name}: {err}");
+        assert!(
+            rx.try_recv().is_err(),
+            "{name}: must emit no Event::Down loop"
+        );
     }
 }
