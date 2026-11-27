@@ -134,9 +134,13 @@ fn of_with(err: &anyhow::Error, words: bool) -> Option<Hop> {
         .or_else(|| staged(true))
 }
 
-/// The words of `pod_proxy::DialError` for a proxy that does not answer
-/// and for a name that does not resolve.
-const PROXY_WORDS: [&str; 2] = ["could not reach the proxy ", "could not resolve the proxy "];
+/// The words of `pod_proxy::DialError` for a proxy that does not answer,
+/// refuses CONNECT, or does not resolve.
+const PROXY_WORDS: [&str; 3] = [
+    "could not reach the proxy ",
+    "could not resolve the proxy ",
+    " refused CONNECT ",
+];
 const DNS_WORDS: &str = "could not resolve ";
 
 /// The hop of `err` by the words of `pod_proxy::DialError` in its text: the
@@ -577,7 +581,10 @@ fn a_silent_tls_peer_gets_one_hint() {
         ),
         (
             "tls_hop TimedOut (io timeout during TLS)",
-            at(io_hop, anyhow::anyhow!("TLS to 127.0.0.1: no answer in 20 s")),
+            at(
+                io_hop,
+                anyhow::anyhow!("TLS to 127.0.0.1: no answer in 20 s"),
+            ),
         ),
     ];
     let mut hops = Vec::new();
@@ -589,7 +596,10 @@ fn a_silent_tls_peer_gets_one_hint() {
             "{name}: wrong hint for {hop}: {hint}"
         );
         for wrong in ["ended the connection", "--ca-file", "clock"] {
-            assert!(!hint.contains(wrong), "{name}: contradicting {wrong:?}: {hint}");
+            assert!(
+                !hint.contains(wrong),
+                "{name}: contradicting {wrong:?}: {hint}"
+            );
         }
         hops.push((name, hop));
     }

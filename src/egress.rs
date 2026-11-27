@@ -320,6 +320,61 @@ async fn open(dialer: &Dialer, host: &str, port: u16, timeout: Duration) -> Resu
     }
 }
 
+/// Format a proxy CONNECT refusal consistently across HTTP and WebSocket
+/// clients (T-629): `the proxy X refused CONNECT to HOST:PORT with HTTP STATUS`.
+pub fn format_connect_refusal(proxy: &str, target: &str, status: u16, reason: &str) -> String {
+    if reason.starts_with("SOCKS5") {
+        return if proxy.is_empty() || target.is_empty() {
+            reason.to_string()
+        } else {
+            format!("{target} through the proxy {proxy}: {reason}")
+        };
+    }
+    let who = if proxy.is_empty() {
+        "the proxy".to_string()
+    } else {
+        format!("the proxy {proxy}")
+    };
+    let dest = if target.is_empty() {
+        String::new()
+    } else {
+        format!(" to {target}")
+    };
+    let status_part = if status > 0 {
+        format!(" with HTTP {status}")
+    } else {
+        String::new()
+    };
+    match reason.trim() {
+        "" => format!("{who} refused CONNECT{dest}{status_part}"),
+        reason => format!("{who} refused CONNECT{dest}{status_part}: {reason}"),
+    }
+}
+
+/// Build an error for a proxy CONNECT refusal with podnet's text, [`Refusal`],
+/// and hop, shared by `egress`, `ws`, `relay_reverse`, and `transfer` (T-629).
+pub(crate) fn proxy_refusal_error(
+    proxy: &str,
+    target: &str,
+    status: u16,
+    reason: &str,
+) -> anyhow::Error {
+    // #762: a proxy that answers 502 or 504 (a SOCKS5 reply of the far side is
+    // a 502) reached out and the target failed: the hop is the target.
+    let hop = match status {
+        502 | 504 => Hop::Connect,
+        _ => Hop::Proxy,
+    };
+    let refusal = Refusal::for_connect(proxy, target, status, reason);
+    let dial = DialError::ProxyRefused {
+        proxy: proxy.to_string(),
+        target: target.to_string(),
+        status,
+        reason: reason.to_string(),
+    };
+    hop::at(hop, anyhow::Error::new(RefusedDial { refusal, dial }))
+}
+
 /// A failed dial in podnet's words: through a proxy, `HOST:PORT through
 /// the proxy URL`, at the hop `proxy`, with its [`Refusal`]; directly,
 /// `connecting to HOST:PORT`, at the hop `dns` when the name did not
@@ -329,10 +384,10 @@ fn failed(e: DialError, host: &str, port: u16, proxy: Option<&Proxy>) -> anyhow:
     match proxy {
         Some(proxy) => {
             let e = proxy_named_once(e);
+            if let DialError::ProxyRefused { status, reason, .. } = &e {
+                return proxy_refusal_error(&proxy.label(), &at, *status, reason);
+            }
             let err = match &e {
-                DialError::ProxyRefused { status, reason, .. } => {
-                    anyhow::Error::new(Refusal::of(*status, reason))
-                }
                 // #754: the last line of the stderr of an exec command can
                 // hold the words of the command.
                 DialError::ProxyExited { word, status, said } => {
@@ -344,17 +399,8 @@ fn failed(e: DialError, host: &str, port: u16, proxy: Option<&Proxy>) -> anyhow:
                 }
                 _ => error_of(&e),
             };
-            // #762: a proxy that answers 502 or 504 (a SOCKS5 reply of the
-            // far side is a 502) reached out and the target failed: the hop
-            // is the target, not the proxy.
-            let hop = match &e {
-                DialError::ProxyRefused {
-                    status: 502 | 504, ..
-                } => Hop::Connect,
-                _ => Hop::Proxy,
-            };
             hop::at(
-                hop,
+                Hop::Proxy,
                 err.context(format!("{at} through the proxy {}", proxy.label())),
             )
         }
@@ -379,6 +425,19 @@ fn failed(e: DialError, host: &str, port: u16, proxy: Option<&Proxy>) -> anyhow:
     }
 }
 
+/// Find a [`DialError`] in `err`, including inside [`RefusedDial`] and
+/// [`hop::AtHop`].
+fn dial_error_in(err: &anyhow::Error) -> Option<&DialError> {
+    err.chain().find_map(|e| {
+        e.downcast_ref::<DialError>()
+            .or_else(|| e.downcast_ref::<RefusedDial>().map(|r| &r.dial))
+            .or_else(|| {
+                e.downcast_ref::<hop::AtHop>()
+                    .and_then(|h| dial_error_in(h.inner()))
+            })
+    })
+}
+
 /// A failed dial `e` of podnet as the [`Failure`] of a [`Dial`]: the stage
 /// of its hop (else `stage`), and the text of its chain, each cause once.
 /// A dial that failed at the proxy has its [`DialError`] as the cause:
@@ -391,13 +450,14 @@ pub(crate) fn dial_failure(e: anyhow::Error, stage: Stage, class: Class) -> Fail
         _ => stage,
     };
     let text = crate::exit::text(&e);
-    // A time limit keeps its DialError too, so that its words name the
-    // limit of the dial: pod-ws writes "timed out after 0s" for a timeout
-    // with no DialError (#761).
-    let dial = e.chain().find_map(|c| c.downcast_ref::<DialError>());
+    // A proxy refusal and a time limit keep their DialError as the cause so
+    // pod-ws preserves ProxyRefused (T-629) and timeout duration (#761).
+    let dial = dial_error_in(&e);
     let typed = match (stage, dial) {
         (Stage::Proxy, Some(dial)) => Some(dial.clone()),
-        (_, Some(dial @ DialError::Timeout { .. })) => Some(dial.clone()),
+        (_, Some(dial @ (DialError::Timeout { .. } | DialError::ProxyRefused { .. }))) => {
+            Some(dial.clone())
+        }
         _ => None,
     };
     match typed {
@@ -407,10 +467,10 @@ pub(crate) fn dial_failure(e: anyhow::Error, stage: Stage, class: Class) -> Fail
 }
 
 /// The class of a failed dial `e` (GitHub #719): the class of the
-/// [`DialError`] in its chain (a time limit, a name with no address), else
-/// the class of its error of I/O, else `default`.
+/// [`DialError`] in its chain (a time limit, a refusal, a name with no
+/// address), else the class of its error of I/O, else `default`.
 pub(crate) fn class_of(e: &anyhow::Error, default: Class) -> Class {
-    if let Some(dial) = e.chain().find_map(|c| c.downcast_ref::<DialError>()) {
+    if let Some(dial) = dial_error_in(e) {
         return dial.stage_and_class().1;
     }
     match e.chain().find_map(|c| c.downcast_ref::<std::io::Error>()) {
@@ -459,18 +519,22 @@ impl Refusal {
     /// The refusal of a proxy's `status` and `reason` (`pod-proxy` gives a
     /// SOCKS5 refusal the status of its HTTP case, and a reason that starts
     /// with `SOCKS5`).
-    fn of(status: u16, reason: &str) -> Refusal {
-        if reason.starts_with("SOCKS5") {
-            return Refusal {
-                status: 0,
-                text: reason.to_string(),
-            };
-        }
-        let text = match reason.trim() {
-            "" => format!("the proxy refused CONNECT with HTTP {status}"),
-            reason => format!("the proxy refused CONNECT with HTTP {status}: {reason}"),
+    #[cfg(test)]
+    pub(crate) fn of(status: u16, reason: &str) -> Refusal {
+        Self::for_connect("", "", status, reason)
+    }
+
+    /// The refusal of a proxy `proxy` for `target` with `status` and `reason`.
+    pub(crate) fn for_connect(proxy: &str, target: &str, status: u16, reason: &str) -> Refusal {
+        let code = if reason.starts_with("SOCKS5") {
+            0
+        } else {
+            status
         };
-        Refusal { status, text }
+        Refusal {
+            status: code,
+            text: format_connect_refusal(proxy, target, code, reason),
+        }
     }
 }
 
@@ -482,14 +546,33 @@ impl std::fmt::Display for Refusal {
 
 impl std::error::Error for Refusal {}
 
+/// Holds podnet's [`Refusal`] beside the underlying [`DialError`] so
+/// `Display` prints only podnet's text while `dial_failure` and `class_of`
+/// still recover `DialError::ProxyRefused`.
+#[derive(Debug)]
+struct RefusedDial {
+    refusal: Refusal,
+    dial: DialError,
+}
+
+impl std::fmt::Display for RefusedDial {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.refusal.text)
+    }
+}
+
+impl std::error::Error for RefusedDial {}
+
 /// The refusal of a proxy in the chain of `err`, if there is one.
 pub fn refusal(err: &anyhow::Error) -> Option<&Refusal> {
     // An error with a hop holds the refusal in its own chain.
     err.chain().find_map(|e| {
-        e.downcast_ref::<Refusal>().or_else(|| {
-            e.downcast_ref::<hop::AtHop>()
-                .and_then(|h| refusal(h.inner()))
-        })
+        e.downcast_ref::<Refusal>()
+            .or_else(|| e.downcast_ref::<RefusedDial>().map(|r| &r.refusal))
+            .or_else(|| {
+                e.downcast_ref::<hop::AtHop>()
+                    .and_then(|h| refusal(h.inner()))
+            })
     })
 }
 
@@ -664,3 +747,12 @@ pub(crate) fn parse_status(head: &[u8]) -> Result<u16> {
 #[cfg(test)]
 #[path = "egress_tests.rs"]
 mod tests;
+
+/// T-629 (GitHub #795): a proxy that refuses CONNECT with 403 or 407 names
+/// the proxy and the target port across connect, relay connect, send, and
+/// bench, never "could not reach the proxy", and gives the right hint.
+#[cfg(test)]
+#[test]
+fn a_connect_refused_by_the_proxy_names_the_target() {
+    tests::check_connect_refused_names_the_target();
+}

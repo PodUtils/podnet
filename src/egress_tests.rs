@@ -214,3 +214,65 @@ fn the_words_of_an_exec_proxy_do_not_reach_a_line() {
     assert!(!text.contains("user754@host.example"), "{text}");
     assert!(text.contains("helper754"), "{text}");
 }
+
+pub(super) fn check_connect_refused_names_the_target() {
+    let proxy = Proxy::parse("http://127.0.0.1:3128").unwrap();
+    let target = Target::new("example.com", 22);
+    let cases = [
+        (403u16, "Forbidden", "port allow-list"),
+        (407u16, "Proxy Authentication Required", "authentication"),
+    ];
+    for (status, reason, want_hint) in cases {
+        let make_failure = || {
+            let raw = DialError::ProxyRefused {
+                proxy: proxy.label(),
+                target: "example.com:22".into(),
+                status,
+                reason: reason.into(),
+            };
+            let egress_err = failed(raw, "example.com", 22, Some(&proxy));
+            let class = class_of(&egress_err, Class::Unavailable);
+            dial_failure(egress_err, Stage::Connect, class)
+        };
+        let bench_err = crate::fetch::failed(make_failure(), "GET https://example.com:22/x");
+        let ws_dial = pod_ws::way::dial_error(make_failure(), &target);
+        let connect_err = crate::ws::failed(
+            "wss://example.com:22/x",
+            pod_ws::ConnectError::Dial(ws_dial.clone()),
+        );
+        let relay_err = crate::relay_reverse::connect_error(
+            "pair-a",
+            pod_ws::ConnectError::Dial(ws_dial.clone()),
+        );
+        let ws_url = pod_ws::url::WsUrl::parse("wss://example.com:22/v1").unwrap();
+        let ws_err = pod_ws::ConnectError::Dial(ws_dial);
+        let send_err = crate::transfer::failed(pod_wormhole::Failed::Unreachable(
+            pod_wormhole::Missed::caused(pod_ws::url::failure(&ws_url, &ws_err), ws_err),
+        ));
+
+        let want_msg = format!(
+            "the proxy http://127.0.0.1:3128 refused CONNECT to example.com:22 with HTTP {status}: {reason}"
+        );
+        for (cmd, err) in [
+            ("bench", bench_err),
+            ("connect", connect_err),
+            ("relay connect", relay_err),
+            ("send", send_err),
+        ] {
+            let line = crate::report::error_line(&err);
+            assert!(
+                !line.contains("could not reach the proxy"),
+                "{cmd} ({status}): {line}"
+            );
+            assert!(
+                line.contains(&want_msg),
+                "{cmd} ({status}): missing {want_msg:?} in:\n{line}"
+            );
+            assert!(
+                line.contains(want_hint),
+                "{cmd} ({status}): missing hint {want_hint:?} in:\n{line}"
+            );
+            assert_eq!(hop::of(&err), Some(Hop::Proxy), "{cmd} ({status}): {line}");
+        }
+    }
+}

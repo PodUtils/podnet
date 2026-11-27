@@ -110,6 +110,12 @@ pub(crate) fn failed(url: &str, err: ConnectError) -> anyhow::Error {
             };
             crate::hop::at(hop, anyhow::anyhow!("TLS to {host}: {}", failure.why))
         }
+        ConnectError::Dial(pod_proxy::DialError::ProxyRefused {
+            proxy,
+            target,
+            status,
+            reason,
+        }) => crate::egress::proxy_refusal_error(&proxy, &target, status, &reason),
         ConnectError::Dial(dial) => {
             let failure = pod_core::Failure::from(dial);
             let hop = match failure.stage {

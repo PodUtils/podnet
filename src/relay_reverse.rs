@@ -543,6 +543,16 @@ pub(crate) fn connect_error(name: &str, err: ConnectError) -> anyhow::Error {
                 body.chars().take(200).collect::<String>()
             ),
         ),
+        ConnectError::Dial(pod_proxy::DialError::ProxyRefused {
+            proxy,
+            target,
+            status,
+            reason,
+        }) => fault(
+            Fault::Unavailable,
+            crate::egress::proxy_refusal_error(&proxy, &target, status, &reason)
+                .context(format!("the session to {name}")),
+        ),
         ConnectError::Tls(ref failure) if failure.cut == Some(pod_proxy::Cut::TimedOut) => fault(
             Fault::Unavailable,
             crate::hop::at(

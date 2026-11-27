@@ -342,9 +342,9 @@ fn a_proxy_refusal_names_the_hop_and_keeps_the_text() {
     );
     assert_eq!(code, Some(69), "{text}");
     assert!(
-        text.contains(
-            "the proxy refused CONNECT with HTTP 403: Forbidden: not on the egress allowlist"
-        ),
+        text.contains(&format!(
+            "the proxy {proxy} refused CONNECT to api.example:443 with HTTP 403: Forbidden: not on the egress allowlist"
+        )),
         "{text}"
     );
     assert!(text.contains("podnet: the proxy hop failed; "), "{text}");

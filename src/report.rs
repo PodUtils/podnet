@@ -16,13 +16,25 @@ pub fn error_line(err: &anyhow::Error) -> String {
         line.push_str(&hint);
     } else if let Some(status) = crate::egress::refusal(err)
         .map(|r| r.status)
-        .filter(|s| (502..=504).contains(s))
+        .filter(|s| *s != 0)
     {
-        // Issue 178: a 502, 503 or 504 of the proxy is the destination:
-        // the proxy could not reach it.
-        line.push_str(&format!(
-            "\npodnet: the proxy answered HTTP {status}: it could not reach the destination; check the address of the destination (--masque-endpoint, --url, the edge)"
-        ));
+        if (502..=504).contains(&status) {
+            // Issue 178: a 502, 503 or 504 of the proxy is the destination:
+            // the proxy could not reach it.
+            line.push_str(&format!(
+                "\npodnet: the proxy answered HTTP {status}: it could not reach the destination; check the address of the destination (--masque-endpoint, --url, the edge)"
+            ));
+        } else if status == 407 {
+            // T-629: 407 is proxy authentication.
+            line.push_str(
+                "\npodnet: the proxy hop failed; the proxy requires authentication (HTTP 407); give the user and password in --proxy or PODNET_PROXY, or use --no-proxy",
+            );
+        } else {
+            // T-629: 403/405/etc. is a CONNECT refusal by the proxy's rules.
+            line.push_str(&format!(
+                "\npodnet: the proxy hop failed; the proxy refused CONNECT (HTTP {status}); check the port allow-list and host allow-list of the proxy, or use --no-proxy"
+            ));
+        }
     } else if let Some(refusal) = crate::hop::refusal_of(err) {
         // The class of a refused registration (live 45169011007): a quick
         // tunnel that the edge does not know yet is not a bad token.

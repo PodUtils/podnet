@@ -171,11 +171,21 @@ fn without_query(url: &str) -> &str {
 /// handshake that the network ended is at the hop `network`, in the words of
 /// [`hop::tls_text`], a silent TLS peer is at `tls-timeout`, and one that TLS
 /// refused is at the hop `tls`.
-fn failed(failure: Failure, what: &str) -> anyhow::Error {
+pub(crate) fn failed(failure: Failure, what: &str) -> anyhow::Error {
     let (mut refusal, mut dialed, mut io) = (None, None, None);
     let mut next: Option<&(dyn std::error::Error + 'static)> = Some(&failure);
     while let Some(e) = next {
-        refusal = refusal.or_else(|| e.downcast_ref::<Refusal>().cloned());
+        refusal = refusal
+            .or_else(|| e.downcast_ref::<Refusal>().cloned())
+            .or_else(|| match e.downcast_ref::<pod_proxy::DialError>() {
+                Some(pod_proxy::DialError::ProxyRefused {
+                    proxy,
+                    target,
+                    status,
+                    reason,
+                }) => Some(Refusal::for_connect(proxy, target, *status, reason)),
+                _ => None,
+            });
         dialed = dialed.or_else(|| e.downcast_ref::<AtHop>().map(|h| h.hop));
         io = io.or_else(|| e.downcast_ref::<std::io::Error>());
         next = e.source();
@@ -244,8 +254,8 @@ mod tests {
             tokio::time::sleep(Duration::from_secs(10)).await;
         });
 
-        let mut req = Request::new("GET", format!("https://{addr}/"))
-            .timeout(Duration::from_secs(1));
+        let mut req =
+            Request::new("GET", format!("https://{addr}/")).timeout(Duration::from_secs(1));
         req.via = Some(Arc::new(DirectLoopback));
         let bench_err = send(req).await.unwrap_err();
         server.abort();
@@ -254,7 +264,8 @@ mod tests {
             step: "the TLS handshake",
             after: Duration::from_secs(20),
         };
-        let connect_err = crate::ws::failed(&format!("wss://{addr}/__podnet/ws"), ws_timeout.clone());
+        let connect_err =
+            crate::ws::failed(&format!("wss://{addr}/__podnet/ws"), ws_timeout.clone());
         let relay_err = crate::relay_reverse::connect_error("pair-a", ws_timeout);
 
         let cases = [

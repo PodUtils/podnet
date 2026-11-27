@@ -238,6 +238,15 @@ pub fn transit_key(hole: &pod_wormhole::Wormhole) -> Result<[u8; 32], Failed> {
 
 /// A failure of the wormhole with its exit class.
 pub fn failed(failed: Failed) -> anyhow::Error {
+    if matches!(failed, Failed::Unreachable(_)) {
+        if let Some((proxy, target, status, reason)) = proxy_refusal_in(&failed) {
+            return exit::fault(
+                Fault::Unavailable,
+                crate::egress::proxy_refusal_error(&proxy, &target, status, &reason)
+                    .context("no meeting point could be reached"),
+            );
+        }
+    }
     let class = match &failed {
         Failed::Unreachable(_) | Failed::Broken(_) | Failed::Nobody => Some(Fault::Unavailable),
         Failed::Refused(_) | Failed::WrongCode => Some(Fault::NoPermission),
@@ -252,6 +261,35 @@ pub fn failed(failed: Failed) -> anyhow::Error {
         Some(class) => exit::fault(class, err),
         None => err,
     }
+}
+
+/// Find a proxy CONNECT refusal inside a wormhole failure chain (T-629).
+fn proxy_refusal_in(
+    err: &(dyn std::error::Error + 'static),
+) -> Option<(String, String, u16, String)> {
+    let mut next: Option<&(dyn std::error::Error + 'static)> = Some(err);
+    while let Some(e) = next {
+        if let Some(pod_ws::ConnectError::Dial(pod_proxy::DialError::ProxyRefused {
+            proxy,
+            target,
+            status,
+            reason,
+        })) = e.downcast_ref::<pod_ws::ConnectError>()
+        {
+            return Some((proxy.clone(), target.clone(), *status, reason.clone()));
+        }
+        if let Some(pod_proxy::DialError::ProxyRefused {
+            proxy,
+            target,
+            status,
+            reason,
+        }) = e.downcast_ref::<pod_proxy::DialError>()
+        {
+            return Some((proxy.clone(), target.clone(), *status, reason.clone()));
+        }
+        next = e.source();
+    }
+    None
 }
 
 /// Input that the receiver refuses, with its exit class (65).
