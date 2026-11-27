@@ -621,6 +621,9 @@ pub(crate) enum LinkCommand {
         /// Print one JSON document: {"carriers": [...]}.
         #[arg(long)]
         json: bool,
+        /// Include registered third-party roads with cost class and last-verified date.
+        #[arg(long)]
+        third_party: bool,
     },
 }
 
@@ -700,9 +703,47 @@ pub(crate) async fn link(args: LinkArgs, egress: Vec<String>) -> Result<()> {
         LinkCommand::Close { name, timeout } => info::close(&name, timeout).await,
         LinkCommand::Reconnect { name, link } => swap::swap("reconnect", &name, link).await,
         LinkCommand::Rotate { name, link } => swap::swap("rotate", &name, link).await,
-        LinkCommand::Carriers { carrier, json } => info::carriers(&carrier.options(), json),
+        LinkCommand::Carriers {
+            carrier,
+            json,
+            third_party,
+        } => {
+            if third_party {
+                carriers_with_third_party(&carrier.options(), json)
+            } else {
+                info::carriers(&carrier.options(), json)
+            }
+        }
         LinkCommand::P2p(args) => p2p::p2p(args).await,
     }
+}
+
+fn carriers_with_third_party(options: &Options, json: bool) -> Result<()> {
+    let reports = carriers::report(options);
+    let third_party = carriers::third_party_roads();
+    if json {
+        let carrier_docs: Vec<serde_json::Value> = reports
+            .iter()
+            .map(|r| {
+                serde_json::json!({
+                    "name": r.name, "cost": r.cost, "address": r.address,
+                    "built": r.built, "available": r.available.is_ok(),
+                })
+            })
+            .collect();
+        let road_docs: Vec<serde_json::Value> = third_party.iter().map(|r| r.to_json()).collect();
+        println!(
+            "{}",
+            podnet::status::stamped(serde_json::json!({
+                "carriers": carrier_docs,
+                "third_party_roads": road_docs,
+            }))
+        );
+        return Ok(());
+    }
+    reports.iter().for_each(|r| println!("{}", r.line()));
+    third_party.iter().for_each(|r| println!("{}", r.line()));
+    Ok(())
 }
 
 #[cfg(test)]

@@ -16,6 +16,7 @@ pub use podnet_serve::road::{
 };
 
 pub mod juicity;
+pub mod third_party;
 pub mod tuic;
 
 use crate::config::Config;

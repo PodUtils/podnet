@@ -757,5 +757,16 @@ pub fn report_in(rows: &[Row], options: &Options) -> Vec<Report> {
         .collect()
 }
 
+/// Registered third-party roads (`irc`, `mqtt`, `syncthing`, `piping`,
+/// `wormhole-transit`) with cost class and last-verified date (T-368).
+pub fn third_party_roads() -> Vec<crate::roads::third_party::ThirdPartyRoad> {
+    crate::roads::third_party::default_registry().into_roads()
+}
+
+/// Text lines for registered third-party roads, naming cost class and last-verified date.
+pub fn third_party_lines() -> Vec<String> {
+    third_party_roads().into_iter().map(|r| r.line()).collect()
+}
+
 #[cfg(test)]
 mod tests;

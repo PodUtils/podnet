@@ -144,6 +144,259 @@ pub fn stamped_text(text: &str) -> String {
     }
 }
 
+/// The seven dependency classes counted by `podnet status` (T-368).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum DependencyClass {
+    RelayHost,
+    RelayDomain,
+    CertificateAuthority,
+    CarrierProtocol,
+    CarrierDestination,
+    DnsResolver,
+    ThirdPartyService,
+}
+
+/// Deduplicated dependency counts across the seven tracked classes.
+#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize)]
+pub struct DependencyCounts {
+    pub relay_host: usize,
+    pub relay_domain: usize,
+    pub certificate_authority: usize,
+    pub carrier_protocol: usize,
+    pub carrier_destination: usize,
+    pub dns_resolver: usize,
+    pub third_party_service: usize,
+    pub total: usize,
+}
+
+/// Collects and deduplicates dependencies across the seven classes.
+#[derive(Clone, Debug, Default)]
+pub struct DependencyCollector {
+    relay_host: std::collections::BTreeSet<String>,
+    relay_domain: std::collections::BTreeSet<String>,
+    certificate_authority: std::collections::BTreeSet<String>,
+    carrier_protocol: std::collections::BTreeSet<String>,
+    carrier_destination: std::collections::BTreeSet<String>,
+    dns_resolver: std::collections::BTreeSet<String>,
+    third_party_service: std::collections::BTreeSet<String>,
+}
+
+impl DependencyCollector {
+    /// Create an empty collector.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Record one dependency value in `class`, normalizing case and trimming whitespace.
+    pub fn add(&mut self, class: DependencyClass, value: impl AsRef<str>) {
+        let normalized = value
+            .as_ref()
+            .trim()
+            .trim_end_matches('.')
+            .to_ascii_lowercase();
+        if normalized.is_empty() {
+            return;
+        }
+        let target = match class {
+            DependencyClass::RelayHost => &mut self.relay_host,
+            DependencyClass::RelayDomain => &mut self.relay_domain,
+            DependencyClass::CertificateAuthority => &mut self.certificate_authority,
+            DependencyClass::CarrierProtocol => &mut self.carrier_protocol,
+            DependencyClass::CarrierDestination => &mut self.carrier_destination,
+            DependencyClass::DnsResolver => &mut self.dns_resolver,
+            DependencyClass::ThirdPartyService => &mut self.third_party_service,
+        };
+        target.insert(normalized);
+    }
+
+    /// Record a road endpoint URL (`scheme://host[:port]/...`), populating protocol,
+    /// destination, relay host, and deduplicated relay domain.
+    pub fn add_road_url(&mut self, url: &str) {
+        let trimmed = url.trim();
+        let (scheme, rest) = match trimmed.split_once("://") {
+            Some((s, r)) => (Some(s), r),
+            None => (None, trimmed),
+        };
+        if let Some(proto) = scheme {
+            self.add(DependencyClass::CarrierProtocol, proto);
+        }
+        let authority = rest.split(['/', '?']).next().unwrap_or("").trim();
+        let authority = authority.rsplit_once('@').map_or(authority, |(_, h)| h);
+        if authority.is_empty() {
+            return;
+        }
+        self.add(DependencyClass::CarrierDestination, authority);
+        let host = extract_host(authority);
+        if !host.is_empty() {
+            self.add(DependencyClass::RelayHost, &host);
+            if let Some(domain) = extract_domain(&host) {
+                self.add(DependencyClass::RelayDomain, domain);
+            }
+        }
+    }
+
+    /// Compute deduplicated counts across all seven classes.
+    pub fn counts(&self) -> DependencyCounts {
+        let relay_host = self.relay_host.len();
+        let relay_domain = self.relay_domain.len();
+        let certificate_authority = self.certificate_authority.len();
+        let carrier_protocol = self.carrier_protocol.len();
+        let carrier_destination = self.carrier_destination.len();
+        let dns_resolver = self.dns_resolver.len();
+        let third_party_service = self.third_party_service.len();
+        let total = relay_host
+            + relay_domain
+            + certificate_authority
+            + carrier_protocol
+            + carrier_destination
+            + dns_resolver
+            + third_party_service;
+        DependencyCounts {
+            relay_host,
+            relay_domain,
+            certificate_authority,
+            carrier_protocol,
+            carrier_destination,
+            dns_resolver,
+            third_party_service,
+            total,
+        }
+    }
+
+    /// Build a [`DependencySummary`] combining collected dependencies with third-party road checks.
+    pub fn summarize(
+        &self,
+        roads: &[crate::roads::third_party::ThirdPartyRoad],
+        today: crate::roads::third_party::VerifiedDate,
+    ) -> DependencySummary {
+        let mut collector = self.clone();
+        for road in roads {
+            if road.enabled {
+                collector.add(DependencyClass::ThirdPartyService, &road.name);
+                if let Some(ep) = &road.endpoint {
+                    collector.add_road_url(ep);
+                }
+            }
+        }
+        let oldest_verified = roads
+            .iter()
+            .map(|r| r.last_verified)
+            .min()
+            .map(|d| d.to_string());
+        let stale_roads: Vec<String> = roads
+            .iter()
+            .filter(|r| r.evaluate_state(today).is_stale())
+            .map(|r| format!("{} (verified {})", r.name, r.last_verified))
+            .collect();
+        let stale = !stale_roads.is_empty();
+        DependencySummary {
+            counts: collector.counts(),
+            oldest_verified,
+            stale,
+            stale_roads,
+        }
+    }
+}
+
+/// Dependency counts and third-party freshness status for `podnet status` (T-368).
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
+pub struct DependencySummary {
+    pub counts: DependencyCounts,
+    pub oldest_verified: Option<String>,
+    pub stale: bool,
+    pub stale_roads: Vec<String>,
+}
+
+impl DependencySummary {
+    /// True when no registered third-party road is stale.
+    pub fn ok(&self) -> bool {
+        !self.stale
+    }
+
+    /// Return an error when any third-party road check date is stale.
+    pub fn check(&self) -> anyhow::Result<()> {
+        if self.stale {
+            anyhow::bail!(
+                "stale third-party road verification (oldest {}): {}",
+                self.oldest_verified.as_deref().unwrap_or("none"),
+                self.stale_roads.join(", ")
+            );
+        }
+        Ok(())
+    }
+
+    /// Human-readable text summary of dependency counts and staleness.
+    pub fn text(&self) -> String {
+        let oldest = self.oldest_verified.as_deref().unwrap_or("none");
+        let state = if self.stale {
+            format!("stale ({})", self.stale_roads.join(", "))
+        } else {
+            "ok".to_string()
+        };
+        format!(
+            "dependencies: total={total} relay_host={rh} relay_domain={rd} certificate_authority={ca} carrier_protocol={cp} carrier_destination={cd} dns_resolver={dr} third_party_service={tp}\noldest_verified: {oldest}\nwatch_state: {state}",
+            total = self.counts.total,
+            rh = self.counts.relay_host,
+            rd = self.counts.relay_domain,
+            ca = self.counts.certificate_authority,
+            cp = self.counts.carrier_protocol,
+            cd = self.counts.carrier_destination,
+            dr = self.counts.dns_resolver,
+            tp = self.counts.third_party_service,
+        )
+    }
+}
+
+fn extract_host(authority: &str) -> String {
+    if let Some(rest) = authority.strip_prefix('[') {
+        return rest
+            .split_once(']')
+            .map_or(authority, |(h, _)| h)
+            .to_ascii_lowercase();
+    }
+    authority
+        .rsplit_once(':')
+        .map_or(authority, |(h, _)| h)
+        .trim_end_matches('.')
+        .to_ascii_lowercase()
+}
+
+fn extract_domain(host: &str) -> Option<String> {
+    if host.parse::<std::net::IpAddr>().is_ok() {
+        return None;
+    }
+    let labels: Vec<&str> = host.split('.').filter(|s| !s.is_empty()).collect();
+    if labels.len() >= 2 {
+        Some(format!(
+            "{}.{}",
+            labels[labels.len() - 2],
+            labels[labels.len() - 1]
+        ))
+    } else if labels.len() == 1 {
+        Some(labels[0].to_string())
+    } else {
+        None
+    }
+}
+
+/// Default dependency summary computed offline from local configuration and built-in metadata.
+pub fn default_dependencies() -> DependencySummary {
+    let mut collector = DependencyCollector::new();
+    if let Ok(roots) = crate::trust::context().roots() {
+        for source in &roots.sources {
+            collector.add(DependencyClass::CertificateAuthority, source);
+        }
+    }
+    if let Ok(list) = std::env::var("PODNET_EDGE") {
+        for entry in list.split(',').map(str::trim).filter(|s| !s.is_empty()) {
+            collector.add_road_url(entry);
+        }
+    }
+    let registry = crate::roads::third_party::default_registry();
+    let today = crate::roads::third_party::VerifiedDate::today_utc();
+    collector.summarize(registry.roads(), today)
+}
+
 /// The status of this host.
 pub fn document() -> Value {
     json!({
@@ -166,6 +419,7 @@ pub fn document() -> Value {
             Some(n) => json!({"soft": n.soft, "hard": n.hard, "raised_from": n.raised_from}),
             None => Value::Null,
         },
+        "dependencies": serde_json::to_value(default_dependencies()).unwrap_or(Value::Null),
     })
 }
 

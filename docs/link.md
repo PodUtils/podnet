@@ -1198,10 +1198,29 @@ library ([build.md](build.md), "The C library"). Linux only.
 | 78 | The allow list has a line that is no peer, or more than 4096 entries; a duplicate element or a cycle in a chain; with `--seal`, a suite that the two ends do not share. |
 | 124 | The hello did not end in 10 s. |
 
+## Third-party roads
+
+Third-party roads share one interface (`podnet::roads::third_party::ThirdPartyRoad`). Every third-party road starts disabled, is switchable off, is never a default, declares a cost class, and records a UTC verification date (`YYYY-MM-DD`). Callers pass endpoint URLs at runtime; podnet stores no hardcoded third-party hostnames.
+
+| Road | Address | Cost class | Protocol |
+| --- | --- | --- | --- |
+| `irc` | `irc://HOST:PORT/CHANNEL` | `high` | `NICK`/`USER`/`JOIN` and chunked base64 `PRIVMSG` frames over TCP. |
+| `mqtt` | `mqtt://HOST:PORT/TOPIC` | `medium` | MQTT 3.1.1 `CONNECT`/`CONNACK`/`SUBSCRIBE`/`SUBACK`/`PUBLISH`/`PINGREQ` over TCP. |
+| `syncthing` | `syncthing://HOST:PORT/?id=DEVICE_ID` | `medium` | Syncthing Relay Protocol v1 (`0x9E79BC40` magic) over TCP or TLS. |
+| `piping` | `https://HOST[:PORT]/PATH` | `medium` | HTTP streaming relay through a piping server. |
+| `wormhole-transit` | `tcp:HOST:PORT` | `medium` | Magic-wormhole transit relay over TCP. |
+
+* Run `podnet link carriers --third-party` (or `--third-party --json`) to list built-in carriers together with registered third-party roads, cost classes, and last-verified dates.
+* Watch probes (`probe_road`, `probe_registry`) test configured endpoints. A failed probe sets `WatchState::Degraded` naming the road and leaves active sessions running.
+* A road whose `last_verified` date is older than `stale_after_days` reports `WatchState::Stale` and fails verification checks.
+* Fronted roads validate `front=` with `check_front` (timeout clamped to at most 1 s). A dead, refused, misrouted, or timed-out front returns an immediate refusal naming the front.
+* Overlay network adapters (`tor`, `iroh`, `zerotier`, `tailscale`) belong to `RoadClass::FallbackAdapter`. Default road selection (`select_road` with `SelectionPolicy::default()`) never picks a fallback adapter unless an explicit flag or policy rule names it.
+* `podnet status` includes `dependencies` (`DependencySummary`): deduplicated counts across seven classes (`relay_host`, `relay_domain`, `certificate_authority`, `carrier_protocol`, `carrier_destination`, `dns_resolver`, `third_party_service`, plus `total`), the `oldest_verified` date, and `stale` / `stale_roads`.
+
 ## Library
 
 `podnet::link` opens a link over a carrier (`dial`, `listen`, `Door::accept`, `Door::accept_peer`, `unix_pair`, `memory_pair`). `podnet::session` runs
-a link over a session that resumes after the loss of its carrier, in 10 minutes. `podnet::carriers` is the registry.
+a link over a session that resumes after the loss of its carrier, in 10 minutes. `podnet::carriers` is the registry (including `third_party_roads`). `podnet::roads::third_party` holds the third-party road codecs (`irc`, `mqtt`, `syncthing`), watch probes, `front=` health checks, and fallback adapter selection.
 `podnet::identity` is the key and the allow list. `podnet::hello` is the hello. `podnet::mesh_announce` is the signed announcement. `podnet::mesh_table` is the route table of the mesh. `podnet::link_announce` sends and takes the announcements on a link. `podnet::link_arq` runs a link over the ARQ of `pod-link` over any lossy carrier of datagrams. `podnet::link_forward` forwards a stream through the mesh. `podnet::link_chain` checks and brings up a chain of `--egress` elements (`Plan::parse`, `open`, `check`). `podnet::link_tcp` (feature `tcp`) makes the TCP carrier from the key and the allow list (`carrier`, `carrier_via` over a chain),
 listens (`listen`) and dials (`dial`, which gives the key that the listener proved). `podnet::link_ws` (feature `ws`) and `podnet::link_h2` (feature `h2`) have the same calls for the WebSocket and the HTTP/2 carrier. `podnet::link_keyed` opens the other carriers that pin the keys by name (`dial`, `listen`, `Tune`): `podnet::link_quic` (feature `quic`) `podnet::link_udp` (feature `udp`) `podnet::link_poll` (feature `poll`), `podnet::link_dns` (feature `dns`) and `podnet::link_icmp` (feature `icmp`).
 The streams, the windows and the keepalive are the work of `pod-link` of PodUtils/podcrates. `crates/podnet-capi` is the C interface of the link (see The C library).
