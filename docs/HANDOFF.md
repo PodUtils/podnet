@@ -13,9 +13,8 @@ PodUtils/podrunner#369, has its fix on `main` (T-619) and its answer (COORD-139 
 
 ## Where the code is
 
-* All finished work is on `main` (`55f72144` at 21:10). `ci` 45856630710 (`bffca86`), `live` 45861374486 and
-  `gate.yml` 45866261787 (both `8712a9c`) pass: the batch for `v0.4.0-beta.21` is green. The commits after `8712a9c` are
-  records and documents only.
+* All finished work is on `main` (`48770ce` adds Gemini / Antigravity Cloud session scripts and docs; the product code is unchanged since `8712a9c`). `ci` 45856630710 (`bffca86`), `live` 45861374486 and
+  `gate.yml` 45866261787 (both `8712a9c`) pass: the batch for `v0.4.0-beta.21` is green. On `48770ce`, `deny`, `secrets`, `issue-sync`, `workflows`, `record`, `plant`, `msrv`, `c-abi`, `restricted-host` and `clippy-stable` pass (`ci` 45989987420 and `live` 45989987329).
 * The newest release is `v0.4.0-beta.20` (T-608; tag at `be2c0df`; COORD-132 #777).
 * Done since beta.20: T-612 (podcrates `v0.86.0`), T-609, T-610, T-611, T-613, T-615 to T-619, T-126 to T-129 (the
   networks `https://`, `wstunnel:`, `vless://`, `ss://`, `wisp:`; the DERP road; ACME), T-244 to its hook gaps, T-294
@@ -48,13 +47,16 @@ PodUtils/podrunner#369, has its fix on `main` (T-619) and its answer (COORD-139 
 
 ## Facts for the next session
 
-* Start each worktree agent with the shell in `/workspace/podnet`: the `isolation: worktree` of the Agent tool takes
-  the repository of the current directory. A `cd` into `.work/cloud/cargo/...` once made the worktree in the cargo cache
-  of podcrates.
-* The permission policy of this host refuses a run of a downloaded third-party binary (Pebble) and a change of
+* Start each worktree agent with the shell in the repository root (`/workspace/podnet` on Claude Cloud;
+  `/home/antigravity/PodUtils/podnet` on Antigravity): `isolation: worktree` takes the repository of the current
+  directory, and on Antigravity the lead creates each local worktree (`git worktree add -b NAME .claude/worktrees/NAME main`)
+  before it invokes the worker (`docs/hosted-sessions.md`). A `cd` into `.work/cloud/cargo/...` once made the worktree in
+  the cargo cache of podcrates.
+* On Claude Cloud, the permission policy refuses a run of a downloaded third-party binary (Pebble) and a change of
   `/etc/hosts`. Do not work around it: a test against a real server goes into a step of `live.yml`.
 * A push cancels the `ci` run of the commit before it (`cancel-in-progress`); `live` waits instead. A commit of the record
-  or of a workflow alone takes `[skip ci]`, and `live` can then start by `workflow_dispatch` (`actions_run_trigger`).
+  or of a workflow alone takes `[skip ci]`, and `live` can then start by `workflow_dispatch` (`actions_run_trigger` or
+  `gh workflow run`).
 * A step of `live.yml` runs under `bash -eo pipefail` (`scripts/live-step.sh`): a `grep` with no match in a pipe ends
   the step; give it `|| true` where no match is normal.
 * The test `report::tests::the_log_filter_names_each_pod_crate_of_podnet` needs each new `pod-*` crate of `Cargo.toml`
@@ -66,15 +68,16 @@ PodUtils/podrunner#369, has its fix on `main` (T-619) and its answer (COORD-139 
 * `cargo test` stops at the first failed test binary: use `--no-fail-fast` for a full run (about 60 minutes here).
 * An issue closes through the record (`TODO/issues.md`, `TODO/github.txt`); `issue-sync` closes it on GitHub at the push.
 * The forge mirror answers 403 at times for Actions lists and job logs: use `mcp__github__actions_list` and
-  `mcp__github__get_job_logs` (`return_content: false` gives a URL to curl).
+  `mcp__github__get_job_logs` (`return_content: false` gives a URL to curl), or `gh run list` / `gh run view --log-failed`.
 * The labs: `sh scripts/get-podlab.sh v0.84.0 DIR`; run as uid 65534 with
   `setpriv --reuid=65534 --regid=65534 --clear-groups env -i PATH=/usr/bin:/bin HOME=DIR PODLAB run PROFILE -- CMD`,
   with the binary in a directory that uid 65534 can read (`/var/tmp/qa`).
-* The direct TCP of this container goes through a TLS middlebox and an HTTPS proxy; UDP 7844 is refused.
+* On Claude Cloud, direct TCP goes through a TLS middlebox and an HTTPS proxy, and UDP 7844 is refused. See
+  `docs/hosted-sessions.md` for Antigravity / Gemini Cloud network, daemon watcher and VM limits.
 
 ## How to work here
 
-* Build with `TMPDIR=/tmp CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0`.
+* Build with `TMPDIR=/tmp CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0` (or source `. ./scripts/cloud-env.sh`).
 * After a change of a document or help text, run `cargo test --bin podnet write_the_llms_files -- --ignored`.
 * The local gate: `TMPDIR=/tmp sh scripts/agent/check.sh` (or `notest` and the tests of the touched crates),
   `cargo clippy --workspace --all-targets --features full -- -D warnings`.
@@ -90,6 +93,7 @@ PodUtils/podrunner#369, has its fix on `main` (T-619) and its answer (COORD-139 
 
 | Issue | Waits for |
 | --- | --- |
+| `#799` (COORD-141, Gemini / Antigravity Cloud role table and startup flags) | podcrates adds the column to its shared `docs/hosted-sessions.md` table. |
 | `#756` (COORD-126, `pod-session` `move_under`) | A tag with it (T-476). |
 | `#753` (COORD-123, `pod-dns` cuts a line inside a cause) | A tag with the fix (T-575). |
 | `#754` (COORD-124, `pod-proxy`, a proxy command that does not exist) | A tag with the fix (T-580). |
