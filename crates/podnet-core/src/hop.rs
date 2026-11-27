@@ -13,6 +13,8 @@ pub enum Hop {
     Dns,
     /// TLS with the edge, the MASQUE front door or an API.
     Tls,
+    /// The peer accepted TCP and did not answer the TLS handshake (T-625).
+    TlsTimeout,
     /// The network ended a connection: a reset, or a close, before or
     /// during the TLS handshake (issue 127: an egress policy, not a trust
     /// or a clock problem).
@@ -34,6 +36,7 @@ impl Hop {
             Hop::Proxy => "proxy",
             Hop::Dns => "dns",
             Hop::Tls => "tls",
+            Hop::TlsTimeout => "tls-timeout",
             Hop::Network => "network",
             Hop::EdgeRegister => "edge-register",
             Hop::EdgeStream => "edge-stream",
@@ -48,6 +51,7 @@ impl Hop {
             Hop::Proxy => "check the proxy URL, its user and password, and the allow-list of the proxy; --no-proxy goes around it",
             Hop::Dns => "give the address with --resolve HOST=IP, or let a proxy resolve names (socks5h://)",
             Hop::Tls => "behind a proxy that inspects TLS, give its root with --ca-file; check the clock of the host",
+            Hop::TlsTimeout => "the peer did not answer the TLS handshake; check the service and that it speaks TLS",
             Hop::Network => "the network ended the connection before the TLS handshake was done: a policy of this host or of its network (an egress allow-list) may block this destination; podnet doctor shows each path",
             Hop::EdgeRegister => "the tunnel did not register with the edge; for a named tunnel, check the token or the credentials file; start podnet again after the wait that the edge gives",
             Hop::EdgeStream => "the edge connection was lost; podnet connects again, and --leg-failover and --transport warp choose other legs",
@@ -115,7 +119,7 @@ fn of_with(err: &anyhow::Error, words: bool) -> Option<Hop> {
     let staged = |connect: bool| {
         err.chain()
             .filter_map(|e| e.downcast_ref::<pod_core::Failure>())
-            .filter_map(|f| of_stage(f.stage))
+            .filter_map(of_failure)
             .filter(|hop| (*hop == Hop::Connect) == connect)
             .last()
     };
@@ -169,6 +173,15 @@ pub fn quick_service_answer(err: &anyhow::Error) -> bool {
     })
 }
 
+/// The hop of a failure of a crate: a TLS handshake timeout is
+/// [`Hop::TlsTimeout`]; else [`of_stage`] of its stage.
+pub fn of_failure(failure: &pod_core::Failure) -> Option<Hop> {
+    if failure.stage == pod_core::Stage::Tls && failure.class == pod_core::Class::Timeout {
+        return Some(Hop::TlsTimeout);
+    }
+    of_stage(failure.stage)
+}
+
 /// The hop of a stage of a failure of a crate.
 pub fn of_stage(stage: pod_core::Stage) -> Option<Hop> {
     use pod_core::Stage;
@@ -216,9 +229,10 @@ pub fn tls_text(err: &std::io::Error) -> String {
     }
 }
 
-/// The hop of an error of a TLS handshake (issue 127): an error of rustls
-/// (an alert, a certificate) is [`Hop::Tls`]; a reset, a close or a time
-/// out of the connection is [`Hop::Network`].
+/// The hop of an error of a TLS handshake (issue 127, T-625): an error of
+/// rustls (an alert, a certificate) is [`Hop::Tls`]; a time out is
+/// [`Hop::TlsTimeout`]; a reset or a close of the connection is
+/// [`Hop::Network`].
 pub fn tls_hop(err: &std::io::Error) -> Hop {
     use std::io::ErrorKind::*;
     if err
@@ -228,8 +242,10 @@ pub fn tls_hop(err: &std::io::Error) -> Hop {
         return Hop::Tls;
     }
     match err.kind() {
-        ConnectionReset | ConnectionAborted | BrokenPipe | UnexpectedEof | TimedOut
-        | ConnectionRefused => Hop::Network,
+        TimedOut => Hop::TlsTimeout,
+        ConnectionReset | ConnectionAborted | BrokenPipe | UnexpectedEof | ConnectionRefused => {
+            Hop::Network
+        }
         _ => Hop::Tls,
     }
 }
@@ -540,4 +556,42 @@ mod tests {
         );
         assert_eq!(tls_text(&err), "TLS alert from the peer: HandshakeFailure");
     }
+}
+
+/// T-625 (GitHub #791): a silent TLS peer after TCP connect maps to one hop
+/// and one true hint across the paths, not a dropped connection or a root CA.
+#[cfg(test)]
+#[test]
+fn a_silent_tls_peer_gets_one_hint() {
+    use pod_core::{Class, Failure, Stage};
+    let io_timeout = std::io::Error::from(std::io::ErrorKind::TimedOut);
+    let io_hop = tls_hop(&io_timeout);
+    let cases = [
+        (
+            "pod_core TLS timeout (relay connect / pod_tls)",
+            anyhow::Error::new(Failure::new(
+                Stage::Tls,
+                Class::Timeout,
+                "the TLS handshake timed out after 20s",
+            )),
+        ),
+        (
+            "tls_hop TimedOut (io timeout during TLS)",
+            at(io_hop, anyhow::anyhow!("TLS to 127.0.0.1: no answer in 20 s")),
+        ),
+    ];
+    let mut hops = Vec::new();
+    for (name, err) in cases {
+        let hop = of(&err).unwrap_or_else(|| panic!("{name}: no hop"));
+        let hint = hop.hint();
+        assert!(
+            hint.contains("did not answer the TLS handshake") && hint.contains("speaks TLS"),
+            "{name}: wrong hint for {hop}: {hint}"
+        );
+        for wrong in ["ended the connection", "--ca-file", "clock"] {
+            assert!(!hint.contains(wrong), "{name}: contradicting {wrong:?}: {hint}");
+        }
+        hops.push((name, hop));
+    }
+    assert_eq!(hops[0].1, hops[1].1, "paths disagree: {hops:?}");
 }

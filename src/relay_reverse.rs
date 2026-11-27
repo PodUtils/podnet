@@ -543,8 +543,17 @@ pub(crate) fn connect_error(name: &str, err: ConnectError) -> anyhow::Error {
                 body.chars().take(200).collect::<String>()
             ),
         ),
-        // The failure keeps the stage of the dial (a proxy, a name): the
-        // error line gives the hint of its hop (GitHub #697, #698).
+        ConnectError::Tls(ref failure) if failure.cut == Some(pod_proxy::Cut::TimedOut) => fault(
+            Fault::Unavailable,
+            crate::hop::at(
+                crate::hop::Hop::TlsTimeout,
+                anyhow::Error::new(pod_core::Failure::from(err)),
+            )
+            .context(format!("the session to {name}")),
+        ),
+        // The failure keeps the stage of the dial (a proxy, a name) and a
+        // TLS handshake timeout maps to Hop::TlsTimeout: the error line gives
+        // the hint of its hop (GitHub #697, #698, T-625).
         err => fault(
             Fault::Unavailable,
             anyhow::Error::new(pod_core::Failure::from(err))

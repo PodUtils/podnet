@@ -82,7 +82,7 @@ pub fn remote_lead(remote: &str, err: &anyhow::Error) -> String {
 }
 
 /// A failure of [`dial`] in podnet's words, with its hop.
-fn failed(url: &str, err: ConnectError) -> anyhow::Error {
+pub(crate) fn failed(url: &str, err: ConnectError) -> anyhow::Error {
     let host = pod_ws::url::WsUrl::parse(url)
         .map(|u| u.host)
         .unwrap_or_default();
@@ -95,7 +95,7 @@ fn failed(url: &str, err: ConnectError) -> anyhow::Error {
             anyhow::anyhow!("{url} refused the WebSocket upgrade: HTTP {status}")
         }
         ConnectError::Timeout { step, after } if step.contains("TLS") => crate::hop::at(
-            crate::hop::Hop::Network,
+            crate::hop::Hop::TlsTimeout,
             anyhow::anyhow!("TLS to {host}: no answer in {} s", after.as_secs()),
         ),
         ConnectError::Timeout { after, .. } => anyhow::anyhow!(
@@ -103,10 +103,10 @@ fn failed(url: &str, err: ConnectError) -> anyhow::Error {
             after.as_secs()
         ),
         ConnectError::Tls(failure) => {
-            let hop = if failure.cut.is_some() {
-                crate::hop::Hop::Network
-            } else {
-                crate::hop::Hop::Tls
+            let hop = match failure.cut {
+                Some(pod_proxy::Cut::TimedOut) => crate::hop::Hop::TlsTimeout,
+                Some(_) => crate::hop::Hop::Network,
+                None => crate::hop::Hop::Tls,
             };
             crate::hop::at(hop, anyhow::anyhow!("TLS to {host}: {}", failure.why))
         }
