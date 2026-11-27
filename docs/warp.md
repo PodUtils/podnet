@@ -155,8 +155,9 @@ others). It reads the variables `PODNET_WARP_API`, `PODNET_WARP_CC`, `PODNET_WAR
 * `warp status` prints `h3          h3-shape=SHAPE congestion=PROFILE control-stream=yes|no settings=yes|no`, and
   the JSON document has the same facts under `h3`, with `cid_rotation`. The status names two states apart (QUIC-5):
   `state       enrolment failed: ...` when the provider refuses or does not answer (exit 77 for a refusal, 69 for a
-  limit or no answer, 78 for a configuration), and `state       transport failed: ...` when the data path of a running
-  `warp up` does not answer (exit 69). An account with no instance has no state line.
+  limit or no answer, 78 for a configuration; JSON `"state": "enrolment failed"`, `"failure_kind": "enrolment"`), and
+  `state       transport failed: ...` when the data path of a running `warp up` does not answer (exit 69; JSON
+  `"state": "transport failed"`, `"failure_kind": "transport"`). An account with no instance has no state line.
 * `--cc none|reno|cubic` (a flag of `podnet warp`, before or after the subcommand; `PODNET_WARP_CC`): the congestion
   controller of the TCP connections of the userspace stack, for the data
   that it sends (an upload). The default is `none`: only the window of the
@@ -327,11 +328,11 @@ others). It reads the variables `PODNET_WARP_API`, `PODNET_WARP_CC`, `PODNET_WAR
   `https://tcp.ssh.relay.ajam.dev`, see [tunnels.md](tunnels.md), "Edge protocol and transport"). The
   client certificate and the pinned key stay end to end. The path that
   worked goes first at the next session. `--no-relay` turns this off.
-  `--masque-endpoint IP:PORT` and `--masque-sni NAME` replace the front
-  door and its TLS name. With no IPv4 default route, the IPv6 door of the device record goes
-  first. `podnet tunnel` takes `--masque-endpoint` too. `warp scan` prints the
+  `--masque-endpoint ENDPOINT` (`IP:PORT`, `[IPv6]:PORT`, `HOST:PORT`, or `https://HOST[:PORT]`) and `--masque-sni NAME`
+  replace the front door and its TLS name. With no IPv4 default route, the IPv6 door of the device record goes
+  first and no IPv4 socket attempt occurs (see [quic.md](quic.md)). `podnet tunnel` takes `--masque-endpoint` too. `warp scan` prints the
   first door that answers as a command: `podnet warp up --masque-endpoint IP:PORT`. The flag is an option of each
-  subcommand of `podnet warp` (for example `warp proxy`, `warp run`, `warp tun`, `warp probe`), not of `podnet warp`
+  subcommand of `podnet warp` (for example `warp proxy`, `warp run`, `warp tun`, `warp probe`, `warp status`), not of `podnet warp`
   alone.
 * `--resolver SPEC` (repeatable; `PODNET_WARP_RESOLVERS`): the resolver of the DNS inside the tunnel, in
   place of `1.1.1.1:53`. `SPEC` is `IP[:PORT]` (UDP) or `tls://IP[:PORT][#NAME]` (DNS over TLS, port 853;

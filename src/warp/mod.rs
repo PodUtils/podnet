@@ -44,6 +44,7 @@ pub mod identity;
 pub mod ip;
 pub mod l4;
 pub mod live;
+pub mod masque;
 pub mod nc;
 pub mod pod;
 pub mod proxy;
@@ -262,6 +263,8 @@ pub struct MasqueOptions {
     pub no_relay: bool,
     /// The front door in place of the one of the device record.
     pub endpoint: Option<SocketAddr>,
+    /// The parsed `--masque-endpoint` (IP:PORT, HOST:PORT, or https://HOST[:PORT]).
+    pub target: Option<masque::MasqueEndpoint>,
     /// The TLS name in place of `consumer-masque.cloudflareclient.com`.
     pub sni: Option<String>,
     /// HTTP/3 on UDP 443 in place of HTTP/2 on TCP 443 (issue 157). No
@@ -346,8 +349,8 @@ impl WarpClient {
         }
         settings.wireguard = wireguard.cloned();
         settings.carry = carry.cloned();
-        if let Some(door) = masque.endpoint {
-            settings.door = pod_warp::Door::Pinned(Target::Addr(door));
+        if let Some(door) = masque::door_of(masque.endpoint, masque.target) {
+            settings.door = door;
         }
         // A proxy (flag or environment) reaches both families; a loopback
         // front door needs no default route.

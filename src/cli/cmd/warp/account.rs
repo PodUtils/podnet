@@ -23,13 +23,22 @@ pub(crate) async fn run(
     };
 
     match args.command {
-        WarpCommand::Register => print_device(&client, path.as_deref()),
+        WarpCommand::Register => print_device(&client, path.as_deref(), args.masque_endpoint),
         WarpCommand::Status { json } => {
-            // Issue 486 (QUIC-5): an enrolment failure and a transport
-            // failure have two names and two exit classes.
+            // QUIC-5: an enrolment failure and a transport failure have
+            // distinct phases, JSON fields, and exit classes.
             if let Err(err) = client.refresh().await {
                 let enrol = podnet::warp::h3::enrolment(&err);
-                eprintln!("{}", podnet::warp::h3::enrolment_line(&enrol));
+                let masque_err = podnet::warp::masque::MasqueError::from_enrol_error(&enrol);
+                if json {
+                    println!(
+                        "{}",
+                        serde_json::to_string_pretty(&podnet::status::stamped(
+                            masque_err.status_json()
+                        ))?
+                    );
+                }
+                eprintln!("{}", masque_err.status_line());
                 return Err(podnet::exit::fault(
                     podnet::warp::h3::enrolment_fault(&enrol),
                     err,
@@ -40,7 +49,16 @@ pub(crate) async fn run(
                 Ok(account) => account,
                 Err(err) => {
                     let enrol = podnet::warp::h3::enrolment(&err);
-                    eprintln!("{}", podnet::warp::h3::enrolment_line(&enrol));
+                    let masque_err = podnet::warp::masque::MasqueError::from_enrol_error(&enrol);
+                    if json {
+                        println!(
+                            "{}",
+                            serde_json::to_string_pretty(&podnet::status::stamped(
+                                masque_err.status_json()
+                            ))?
+                        );
+                    }
+                    eprintln!("{}", masque_err.status_line());
                     return Err(podnet::exit::fault(
                         podnet::warp::h3::enrolment_fault(&enrol),
                         err,
@@ -53,6 +71,11 @@ pub(crate) async fn run(
             // QUIC-5: the data path of the instance is a transport state,
             // not an enrolment state.
             let transport_dead = instance["data_path"].as_str() == Some("tcp-dead");
+            let transport_err = transport_dead.then(|| {
+                podnet::warp::masque::MasqueError::transport(
+                    "the data path of warp up does not answer",
+                )
+            });
             if json {
                 let active = podnet::warp::identity::warp_plus_label(&account) == "yes";
                 if let Some(doc) = account.as_object_mut() {
@@ -62,14 +85,16 @@ pub(crate) async fn run(
                     // the account; warp_plus_active is.
                     doc.insert("warp_plus_active".into(), active.into());
                     doc.insert("h3".into(), podnet::warp::h3::doc());
-                    doc.insert(
-                        "state".into(),
-                        if transport_dead {
-                            "transport failed".into()
-                        } else {
-                            "ok".into()
-                        },
-                    );
+                    if let Some(ep) = args.masque_endpoint {
+                        doc.insert("masque_endpoint".into(), ep.to_string().into());
+                    }
+                    if let Some(err) = &transport_err {
+                        doc.insert("state".into(), err.status_state().into());
+                        doc.insert("failure_kind".into(), err.kind().into());
+                        doc.insert("detail".into(), err.detail().into());
+                    } else {
+                        doc.insert("state".into(), "ok".into());
+                    }
                 }
                 // T-519: the stamp of each document. A key `schema` of the
                 // record of the provider does not replace it.
@@ -80,21 +105,16 @@ pub(crate) async fn run(
                     "{}",
                     serde_json::to_string_pretty(&podnet::status::stamped(account))?
                 );
-                if transport_dead {
-                    eprintln!(
-                        "{}",
-                        podnet::warp::h3::transport_line(
-                            "the data path of warp up does not answer"
-                        )
-                    );
+                if let Some(err) = transport_err {
+                    eprintln!("{}", err.status_line());
                     return Err(podnet::exit::fault(
                         Fault::Unavailable,
-                        anyhow::anyhow!("the data path of warp up does not answer"),
+                        anyhow::anyhow!("{}", err.detail()),
                     ));
                 }
                 return Ok(());
             }
-            print_device(&client, path.as_deref());
+            print_device(&client, path.as_deref(), args.masque_endpoint);
             println!(
                 "warp up     {}",
                 podnet::warp::live::instance::instances_line(&instance, &tun)
@@ -108,14 +128,11 @@ pub(crate) async fn run(
             );
             println!("premium     {}", field("premium_data"));
             println!("quota       {}", field("quota"));
-            if transport_dead {
-                eprintln!(
-                    "{}",
-                    podnet::warp::h3::transport_line("the data path of warp up does not answer")
-                );
+            if let Some(err) = transport_err {
+                eprintln!("{}", err.status_line());
                 return Err(podnet::exit::fault(
                     Fault::Unavailable,
-                    anyhow::anyhow!("the data path of warp up does not answer"),
+                    anyhow::anyhow!("{}", err.detail()),
                 ));
             }
         }
@@ -156,7 +173,7 @@ pub(crate) async fn run(
             client.rotate_key().await?;
             save(&client)?;
             println!("key         rotated");
-            print_device(&client, path.as_deref());
+            print_device(&client, path.as_deref(), args.masque_endpoint);
         }
         WarpCommand::Delete => {
             client.delete().await?;
@@ -179,7 +196,11 @@ pub(crate) fn plain_value(value: &serde_json::Value) -> String {
     }
 }
 
-fn print_device(client: &podnet::warp::WarpClient, path: Option<&std::path::Path>) {
+fn print_device(
+    client: &podnet::warp::WarpClient,
+    path: Option<&std::path::Path>,
+    masque_endpoint: Option<podnet::warp::masque::MasqueEndpoint>,
+) {
     let device = client.device();
     println!("device      {}", device.id);
     println!("account     {}", device.account.id);
@@ -196,7 +217,11 @@ fn print_device(client: &podnet::warp::WarpClient, path: Option<&std::path::Path
     );
     println!(
         "masque      {}",
-        or_dash(device.masque_endpoint().map(|a| a.to_string()))
+        or_dash(
+            masque_endpoint
+                .map(|ep| ep.to_string())
+                .or_else(|| device.masque_endpoint().map(|a| a.to_string()))
+        )
     );
     println!("protocol    {}", device.policy.tunnel_protocol);
     match path {

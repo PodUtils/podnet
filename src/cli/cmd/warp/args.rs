@@ -144,9 +144,9 @@ pub(crate) struct WarpArgs {
     /// front door stays end to end in the WebSocket.
     #[arg(long, global = true)]
     pub(crate) no_relay: bool,
-    /// The MASQUE front door (IP:PORT) in place of the one of the device.
-    #[arg(long, value_name = "IP:PORT", global = true)]
-    pub(crate) masque_endpoint: Option<std::net::SocketAddr>,
+    /// The MASQUE front door (IP:PORT, HOST:PORT, or https://HOST[:PORT]) in place of the one of the device.
+    #[arg(long, value_name = "ENDPOINT", global = true)]
+    pub(crate) masque_endpoint: Option<podnet::warp::masque::MasqueEndpoint>,
     /// The TLS name of the MASQUE front door in place of
     /// consumer-masque.cloudflareclient.com.
     #[arg(long, value_name = "NAME", global = true)]

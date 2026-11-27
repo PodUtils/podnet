@@ -67,8 +67,12 @@ pub(crate) async fn wireguard_peer(args: &WarpArgs) -> Result<Option<podnet::war
 pub(crate) fn masque_options(args: &WarpArgs) -> podnet::warp::MasqueOptions {
     podnet::warp::MasqueOptions {
         no_relay: args.no_relay,
-        endpoint: args.masque_endpoint,
-        sni: args.masque_sni.clone(),
+        endpoint: args.masque_endpoint.and_then(|e| e.socket_addr()),
+        target: args.masque_endpoint,
+        sni: args.masque_sni.clone().or_else(|| {
+            args.masque_endpoint
+                .and_then(|e| e.sni().map(str::to_string))
+        }),
         h3: args.masque_transport.as_deref() == Some("h3"),
     }
 }

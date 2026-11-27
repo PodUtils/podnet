@@ -368,10 +368,59 @@ release binary of the reference implementation. The stand-in tests remain, becau
 The rotation test proves the migration code of `pod-quic` over a switch in memory. It does not prove a path change on
 a real network.
 
+## Provider-agnostic MASQUE (QUIC-1 to QUIC-5)
+
+`src/warp/masque/` splits provider enrolment from the HTTP/3 MASQUE transport client. The client uses the existing
+`pod-quic` (`noq`) and `pod-warp::h3` stack and adds no second QUIC stack (QUIC-10).
+
+### Enrolment providers (QUIC-4)
+
+`MasqueEnrolment` defines one trait for provider enrolment. Two providers implement it:
+
+- `WarpEnrolment`: wraps Cloudflare WARP device and P-256 identity enrolment with a pinned peer SPKI (`cf-connect-ip`).
+- `TokenEnrolment` (aliased as `EndpointEnrolment`): targets any RFC 9298/9484 MASQUE endpoint (`--masque-endpoint`),
+  with an optional bearer token (`authorization: Bearer ...`), custom CA roots, or a pinned peer SPKI (`connect-ip`).
+
+Both providers produce an `EnrolledEndpoint` and pass the same `MasqueClient` session suite.
+
+### Three modes on one connection (QUIC-2)
+
+One `MasqueConnection` (one QUIC connection and one HTTP/3 control stream) multiplexes three extended CONNECT modes and
+routes HTTP/3 datagrams by quarter stream ID:
+
+- `CONNECT-IP` (RFC 9484): sends IP packets as HTTP/3 datagrams with Context ID 0, and falls back to `DATAGRAM`
+  capsules on the request stream when a packet exceeds the QUIC datagram MTU.
+- `CONNECT-UDP` (RFC 9298): sends `:protocol=connect-udp` with `:path=/.well-known/masque/udp/{host}/{port}/` and
+  carries UDP payloads to the target address (for example a local UDP echo server).
+- `WebTransport`: sends `:protocol=webtransport` over the same HTTP/3 connection and carries bidirectional WebTransport
+  streams (`0x41` + session ID), WebTransport HTTP/3 datagrams, and `DATA` frames on the CONNECT stream.
+
+### Endpoint flag and IPv6-only hosts (QUIC-1)
+
+`--masque-endpoint ENDPOINT` on `podnet warp` accepts `IP:PORT`, `[IPv6]:PORT`, `HOST:PORT`, or `https://HOST[:PORT]`
+(default port 443).
+
+Under `IpPolicy::Ipv6Only` (or `IpPolicy::Auto` on a host with no IPv4 default route), the client filters out IPv4
+endpoints before any socket call, binds `[::]:0`, and records zero IPv4 socket or connect attempts in `AttemptTracker`.
+
+### Enrolment versus transport failures (QUIC-5)
+
+`MasqueError` separates provider enrolment failures (`MasqueError::Enrolment`, kind `"enrolment"`) from QUIC and HTTP/3
+transport failures (`MasqueError::Transport`, kind `"transport"`). `podnet warp status` prints
+`state       enrolment failed: ...` or `state       transport failed: ...` on stderr. `podnet warp status --json`
+reports `"state": "enrolment failed"` with `"failure_kind": "enrolment"`, or `"state": "transport failed"` with
+`"failure_kind": "transport"`.
+
 ## The gates of issue 486
 
 | Gate | Status | Evidence |
 | --- | --- | --- |
+| `CONNECT-IP` to a non-WARP endpoint (`--masque-endpoint`) | done | `quic_masque::connect_ip_to_non_warp_endpoint`, RFC 9484 datagrams and capsules |
+| `CONNECT-UDP` to a local UDP echo server | done | `quic_masque::connect_udp_through_masque_to_local_udp_echo`, RFC 9298 round-trip |
+| `CONNECT-IP`, `CONNECT-UDP`, and WebTransport on one client | done | `quic_masque::webtransport_and_all_three_modes_share_one_quic_connection` |
+| IPv6-only host with zero IPv4 attempts | done | `quic_masque::ipv6_only_host_makes_zero_ipv4_attempts`, `[::]:0` bind, zero IPv4 attempts |
+| Two providers pass the same session suite | done | `quic_masque::two_providers_pass_the_same_session_suite` (`WarpEnrolment`, `TokenEnrolment`) |
+| Enrolment vs transport failures separated | done | `quic_masque::enrolment_and_transport_failures_are_distinct_in_library_and_cli` |
 | A stock HTTP/3 client completes a request | done | `quic_h3_stock`, quic-go v0.59.0, 200 |
 | A qlog shows the control stream | done | `quic_qlog`, `stream_id=3` |
 | `doctor` prints the congestion profile | done | `doctor --quick`, `h3-shape` |
@@ -381,6 +430,3 @@ a real network.
 | One TUIC implementation, with the dedupe recorded | done as a port | `src/roads/tuic/`; the podssh follow-up is the file list above |
 | 10 minutes and two rotations lose no byte; a refused migration reconnects | done | `quic_rotation`, two tests |
 | The drop policy is documented | done | this page, The drop policy |
-
-The MASQUE work of QUIC-1 to QUIC-5 (the split of the provider enrolment, `--masque-endpoint`, `CONNECT-UDP` to a
-local echo, the IPv6-only host and the second provider) is not part of these seven gates and was not changed here.
