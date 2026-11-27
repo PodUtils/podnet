@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**631 entries: 1 open, 7 partial, 28 blocked, 595 done.**
+**631 entries: 0 open, 8 partial, 28 blocked, 595 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 3 | 95 | 99 |
 | P2 | 0 | 3 | 11 | 309 | 323 |
-| P3 | 1 | 3 | 14 | 190 | 208 |
-| **All** | 1 | 7 | 28 | 595 | 631 |
+| P3 | 0 | 4 | 14 | 190 | 208 |
+| **All** | 0 | 8 | 28 | 595 | 631 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -532,7 +532,7 @@ M8 Overlays, M9 Later.
 | [T-485](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.72.0 |
 | [T-486](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.73.0 |
 | [T-487](fixes.md) | P1 | S | M5 | release | done | The image on ghcr.io: an attestation of its provenance, and its digests in the release notes |
-| [T-488](fixes.md) | P3 | S | M5 | research | open | A quick tunnel with two edge connections gets HTTP 530 for some requests |
+| [T-488](fixes.md) | P3 | S | M5 | research | partial | A quick tunnel with two edge connections gets HTTP 530 for some requests |
 | [T-489](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.74.0 |
 | [T-490](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.75.0 |
 | [T-491](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.76.0 |

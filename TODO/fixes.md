@@ -11367,7 +11367,7 @@ step "Throughput through WARP, 1 to 16 MiB" (`scripts/live-throughput.sh`); the 
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -11411,6 +11411,11 @@ The tunnel had registered at sea10 and sea09; the GETs and POSTs of 16 MiB befor
 2026-11-24: `live` 45309573101 (`9f3c8a2`, the release commit of `v0.4.0-beta.18`, T-533) failed in the same step: the
 POST of 16 MiB over `http2+direct` got HTTP 530, `cf-ray` `a5f4e5494c61e3c6-IAD`, "Origin DNS error". The code of the
 step is the code of `cca0b3d`, whose `live` 45289544910 passed. The failed job runs again.
+2026-11-27: direct measurements on `0.4.0-beta.21` (`90f2679`) saw 0 HTTP 530s for both `--ha-connections 1` and `2`:
+HTTP/2 3 rounds x 20 GETs each (0/60 each) and QUIC 5 rounds x (1 MiB POST + 20 GETs) each (0/5 POSTs and 0/100 GETs
+each). Source check of `cloudflare/cloudflared:cmd/cloudflared/tunnel/quick_tunnel.go` confirms `cloudflared` overrides
+`ha-connections` to `1` for every quick tunnel (`sc.c.Set(flags.HaConnections, "1")`). The remaining 20-round WARP
+measurement waits to avoid registering unnecessary WARP devices (`docs/decisions.md`, WARP devices).
 
 # T-489: Take podcrates v0.74.0
 

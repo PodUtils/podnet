@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 631 entries: 1 open, 7 partial, 28 blocked, 595 done.
+`TODO/INDEX.md` holds 631 entries: 0 open, 8 partial, 28 blocked, 595 done.
 
 ## State
 
@@ -11,18 +11,21 @@
   `pod-proxy`, `pod-dns`, `pod-services`, `pod-ws`, `pod-quic`, `pod-hold`, `pod-wg`, `pod-netstack`, `pod-relay`,
   `pod-identity`, `pod-session`, `pod-e2e`, `pod-link`, `pod-turn`, `pod-devtunnel`, `pod-warp`, `pod-wormhole`
   (the transfer), `pod-extract`, `pod-manual`, `pod-cloudflare`, `pod-cover`, `pod-harness`, `pod-offline`,
-  `pod-shape`, optional `pod-sidecar` (feature `sidecar`), `pod-release` (T-494, `podnet update`), and
-  `pod-testkit`. Not taken yet: `pod-egress`, `pod-derp`, `pod-ts` and `pod-acme`. A session reads the state of
+  `pod-shape`, `pod-egress`, `pod-derp`, `pod-acme`, optional `pod-sidecar` (feature `sidecar`), `pod-release`
+  (T-494, `podnet update`), and `pod-testkit`. Not taken yet: `pod-ts` (T-123, T-124). A session reads the state of
   podcrates with `sh scripts/agent/podcrates.sh` (`docs/maintenance.md`, Shared crates). A file that a block of `crates/*/SOURCES`
   names with no `taken` line is frozen: it takes fixes only, each as a COORD issue.
-- The newest release is `v0.4.0-beta.20` (T-608, 2026-11-26, the tag at `be2c0df`): the carriers of the feature
-  `release` (#620) and the fixes of the QA pass #761 to #775. COORD-132 (#777) hands off the files and the digests.
+- The newest release is `v0.4.0-beta.21` (2026-11-27, tag at `3d04883`): podcrates `v0.86.0` (T-612), all link
+  carriers (`s3`, `icmp`, `ntp`, `smtp`, `imap`; T-609), the new roads (`https://`, `wstunnel:`, `vless://`, `ss://`,
+  `wisp:`, DERP, ACME, TCP direction split, `tunnel --inspect`), `pod` inbound socket cleanup (T-619,
+  PodUtils/podrunner#369), and the fixes of the QA pass #786 to #798 (T-620 to T-632). COORD-143 (#801) hands off the
+  files and the digests.
 - Deferred feature consolidation (`4df28952`): T-365, T-366, T-369 to T-373, and T-376 to T-378 are done; T-367
   (GitHub #486) stays partial on MASQUE `QUIC-1` to `QUIC-5`; T-368 (#489), T-374 (#497), and T-375 (#498) stay
   blocked.
 - Hard-problems fixes (`docs/research/podnet/hard-problems-results.md`, `4df28952`): T-507 (H-02), T-508 (H-04), T-509
   (H-05), H-10 (`docs/warp.md`), H-11 (`scripts/live-throughput.sh`), and H-19 (`tests/transfer_relay.rs` `160 KiB` cap
-  test move; T-476 is blocked on `pod-session` `move_under`, COORD-126 #756).
+  test move; T-476 done in `v0.86.0`).
 - The goal (the owner, 2026-11-13): close each issue except the deferred ones, then a final complete beta. The takes
   follow the plan of podcrates (PodUtils/podcrates#133; `docs/decisions.md`, 2026-11-13).
 - Keep this section short. Write the current state only; git keeps the history.
@@ -44,8 +47,8 @@ stop"). End a turn only when each remaining entry is blocked.
    the take of a crate of podcrates: it waits for the release of that crate. An entry that changes
    frozen code (`sh scripts/agent/podcrates.sh`) waits for the take, except a fix. Add no new
    hardcoded host or service of another party (`docs/decisions.md`, Services crate).
-3. **Releases:** the gate of the QA round is done (2026-11-20). The newest is `v0.4.0-beta.20`. The next beta
-   (`v0.4.0-beta.21`) runs the black-box QA pass first (`docs/maintenance.md`, Release, step 0).
+3. **Releases:** the gate of the QA round is done (2026-11-20). The newest is `v0.4.0-beta.21`. The next beta
+   (`v0.4.0-beta.22`) runs the black-box QA pass first (`docs/maintenance.md`, Release, step 0).
 
 ### The order of podnet's own work
 

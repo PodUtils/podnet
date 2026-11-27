@@ -1,6 +1,6 @@
 # Handoff
 
-The product work state at 2026-11-26 21:30 (UTC). Start a hosted checkout with
+The product work state at 2026-11-27 17:20 (UTC). Start a hosted checkout with
 [TODO/RESUME.md](../TODO/RESUME.md). Remove this file when the lead session has no unfinished step.
 
 ## The goal
@@ -8,101 +8,82 @@ The product work state at 2026-11-26 21:30 (UTC). Start a hosted checkout with
 **podrunner first** (the owner, 2026-11-18; `docs/decisions.md`). The order: a red run of podnet's CI; each ask of
 podrunner (a COORD issue `(to podnet)`); the take of each tag of podcrates (T-137); podnet's own work in the order of
 `TODO/PROGRESS.md`. The newest tag of podcrates is `v0.86.0` (taken in T-612). The open ask of podrunner,
-PodUtils/podrunner#369, has its fix on `main` (T-619) and its answer (COORD-139 #784); it closes with the release of
-`v0.4.0-beta.21`.
+PodUtils/podrunner#369, is fixed and shipped in `v0.4.0-beta.21` (T-619; COORD-139 #784 updated; COORD-143 #801 hands
+off the release).
 
 ## Where the code is
 
-* All finished work is on `main` (`48770ce` adds Gemini / Antigravity Cloud session scripts and docs; the product code is unchanged since `8712a9c`). `ci` 45856630710 (`bffca86`), `live` 45861374486 and
-  `gate.yml` 45866261787 (both `8712a9c`) pass: the batch for `v0.4.0-beta.21` is green. On `48770ce`, `deny`, `secrets`, `issue-sync`, `workflows`, `record`, `plant`, `msrv`, `c-abi`, `restricted-host` and `clippy-stable` pass (`ci` 45989987420 and `live` 45989987329).
-* The newest release is `v0.4.0-beta.20` (T-608; tag at `be2c0df`; COORD-132 #777).
-* Done since beta.20: T-612 (podcrates `v0.86.0`), T-609, T-610, T-611, T-613, T-615 to T-619, T-126 to T-129 (the
-  networks `https://`, `wstunnel:`, `vless://`, `ss://`, `wisp:`; the DERP road; ACME), T-244 to its hook gaps, T-294
-  (the service `ss`), T-321 (TURN), T-358 (the release gate). Each new road has a `live` step against a real server
-  (coturn, Pebble, ssserver, Xray-core, wisp-server-python, derper).
-* Partial or blocked on podcrates: T-244 (COORD-136 #781), T-295 (COORD-140 #785), T-614 (COORD-134 #779), T-114 and
-  T-115 (COORD-130 #760), T-123 and T-124 (no `pod-ts`). COORD-135 (#780), COORD-137 (#782) and COORD-138 (#783) ask
-  for extensions of taken crates.
-* Backups on GitHub: `wip/beta21-release-notes` (the draft of the notes of beta.21,
-  `docs/releases/v0.4.0-beta.21.draft.md`); `wip/worktree-agent-a0fa474aa2d48b577` and
-  `wip/worktree-agent-a1b55fa9cb5648e19` (the T-358 commits of two agents before the resolution of their conflicts; `main`
-  has their content).
+* All finished work is on `main` (`3d04883` is the tag `v0.4.0-beta.21`). `ci` 46020756469 (all 13 jobs), `live`
+  46020756523, `gate` 46020756813, `deny` 46020756439, `secrets` 46020756442, `issue-sync` 46020756972,
+  `record-issues` 46025989718, dry run `release` 46027210279, publish `release` 46032920415 and `release-proofs`
+  46038872762 (`proofs` and both reproducible `rebuild` jobs) all passed.
+* The newest release is `v0.4.0-beta.21` (tag at `3d04883`; COORD-143 #801; manifest list digest
+  `sha256:7b07bc89c549d48bfeeaf28794e5186a5d8cd6d4978a63bae62fbf7a411534a5`).
+* Done in this session: all 13 findings of the QA pass of `v0.4.0-beta.21` (T-620 to T-632, GitHub #786 to #798 closed
+  via `issue-sync`), `T-621` follow-up fix for full unread stdout pipes in `exit --stdio` (`3d04883`, `live`
+  46015389946), `T-628` `need_loopback!()` guard (`86d1990`), `T-488` direct HTTP/2 and QUIC measurements plus
+  `cloudflared` source check, `COORD-142` (#800) to podcrates for four shared-crate follow-ups, and the release of
+  `v0.4.0-beta.21` (`COORD-143` #801, `COORD-139` #784 updated).
+* Remaining entries are all blocked behind `PodUtils/podcrates`, sibling projects, outside services, or the owner:
+  * **Blocked on `PodUtils/podcrates`:** T-137 (next tag after `v0.86.0`), T-114 and T-115 (COORD-130 #760, shared
+    headscale harness), T-123 and T-124 (no `pod-ts` crate), T-161 and T-200 (COORD-006 #413, `pod-relay`), T-219 and
+    T-220 (`pod-unit`, `pod-relay`), T-244 (COORD-136 #781, `pod-cloudflare` capture hook gaps), T-283 and T-284
+    (`pod-link`), T-295 (COORD-140 #785, `pod-egress` Trojan accept parser), T-316 (QUIC stand-in leg on
+    `pod-cloudflare`), T-406 and T-478 (COORD-098 #604, relay lost-socket reset), T-586 (`pod-link` p2p), T-614
+    (COORD-134 #779, `pod-proxy` TLS hop for process `https://` proxy), plus COORD-135 (#780), COORD-137 (#782),
+    COORD-138 (#783), COORD-141 (#799), COORD-142 (#800).
+  * **Waiting for a `live` warning or outside resource:** T-414 and T-415 (partial: wait for next `live` warning to
+    report `pod-warp` logs), T-488 (partial: direct measurements saw 0 HTTP 530s; 20-round WARP measurement waits to
+    avoid unnecessary WARP device registration).
+  * **Blocked on owner or external accounts/devices/captures:** T-001 (#89), T-002 (#140), T-003 (#149), T-004 (#151),
+    T-005 (#161), T-006 (#222), T-007 (#224), T-044, T-210 (#407, paid WARP+ device), T-221 (cfb ask, live step),
+    T-247 (NetBird account), T-367 (#486), T-368 (#489), T-374 (#497), T-375 (#498).
 
 ## The next steps, in order
 
-1. **The findings of the QA pass of `v0.4.0-beta.21`** (#786 to #798; the pass ended, its summary is the last comment
-   of #786): the entries are T-620 to T-632 (P2: T-620, T-621, T-622, T-623, T-624, T-629; the rest P3). Four agents
-   work in worktrees: the triage of the entries (TODO only), group A (T-620, T-622, T-625, T-629: the error lines of a
-   dial), group B (T-621, T-624, T-632: `exit --stdio`, `ssh-relay`, `pod --log-format json`), group C (T-623, T-626,
-   T-627, T-628, T-630, T-631: texts and documents). Take each commit onto `main`, write the Done sections, and close the
-   issues through the record. With no agent running (a new session), take the entries one by one.
-2. **The release of `v0.4.0-beta.21`** (`docs/maintenance.md`, Release): set the version; take the notes from
-   `wip/beta21-release-notes` into `docs/releases/v0.4.0-beta.21.md` and add the fixes of the QA pass; push; wait for
-   `ci`, `live` and `gate.yml` on that commit; the dry run of `release.yml`; then `publish=v0.4.0-beta.21`; check
-   `release-proofs.yml`. Then a COORD issue `(to all)` with the files, their SHA-256 and the image by digest, and a line
-   `state:` on COORD-139 (#784) with the version for podrunner.
-3. **Each tag of podcrates:** take it (T-137) and close the COORD issues that it answers.
-4. Waits for a run or a ruling: T-414 and T-415 (a warning of their `live` steps), T-478 (blocked on T-406), T-488,
-   T-001 (the owner).
+1. **Each new tag of `PodUtils/podcrates` (> `v0.86.0`):** take it (T-137), close the COORD issues that it answers, and
+   unblock the entries above (such as T-614, T-295, T-244, T-114/T-115, T-123/T-124, T-406/T-478).
+2. **Each new ask of `podrunner` (or `cfb` / `githome`):** handle before other podnet work (`docs/decisions.md`,
+   2026-11-18, podrunner first).
+3. **Any red run of `ci` or `live`:** triage; capture T-414 or T-415 warnings if they fire in `live`.
+4. **Next beta (`v0.4.0-beta.22`):** after a new green batch, run the black-box QA pass (`scripts/agent/qa-pass.md`)
+   first (`docs/maintenance.md`, Release, step 0).
 
 ## Facts for the next session
 
 * Start each worktree agent with the shell in the repository root (`/workspace/podnet` on Claude Cloud;
-  `/home/antigravity/PodUtils/podnet` on Antigravity): `isolation: worktree` takes the repository of the current
-  directory, and on Antigravity the lead creates each local worktree (`git worktree add -b NAME .claude/worktrees/NAME main`)
-  before it invokes the worker (`docs/hosted-sessions.md`). A `cd` into `.work/cloud/cargo/...` once made the worktree in
-  the cargo cache of podcrates.
-* On Claude Cloud, the permission policy refuses a run of a downloaded third-party binary (Pebble) and a change of
-  `/etc/hosts`. Do not work around it: a test against a real server goes into a step of `live.yml`.
-* A push cancels the `ci` run of the commit before it (`cancel-in-progress`); `live` waits instead. A commit of the record
-  or of a workflow alone takes `[skip ci]`, and `live` can then start by `workflow_dispatch` (`actions_run_trigger` or
-  `gh workflow run`).
-* A step of `live.yml` runs under `bash -eo pipefail` (`scripts/live-step.sh`): a `grep` with no match in a pipe ends
-  the step; give it `|| true` where no match is normal.
-* The test `report::tests::the_log_filter_names_each_pod_crate_of_podnet` needs each new `pod-*` crate of `Cargo.toml`
-  in the log filter of `crates/podnet-core/src/report.rs`; `each_variable_of_the_code_is_a_fact` needs each new
-  variable in `src/manual/facts.rs`; a test that binds the loopback starts with `need_loopback!()`.
-* `check.sh` must pass before the commit: a chained `git commit` after it does not stop on a fault.
-* Do not run the test suite under `nohup`: SIGHUP is then ignored for each child, and the SIGHUP cases of
-  `tests/pod_signals.rs` and `tests/signals.rs` fail. Use `setsid` or a background shell.
-* `cargo test` stops at the first failed test binary: use `--no-fail-fast` for a full run (about 60 minutes here).
-* An issue closes through the record (`TODO/issues.md`, `TODO/github.txt`); `issue-sync` closes it on GitHub at the push.
-* The forge mirror answers 403 at times for Actions lists and job logs: use `mcp__github__actions_list` and
-  `mcp__github__get_job_logs` (`return_content: false` gives a URL to curl), or `gh run list` / `gh run view --log-failed`.
-* The labs: `sh scripts/get-podlab.sh v0.84.0 DIR`; run as uid 65534 with
-  `setpriv --reuid=65534 --regid=65534 --clear-groups env -i PATH=/usr/bin:/bin HOME=DIR PODLAB run PROFILE -- CMD`,
-  with the binary in a directory that uid 65534 can read (`/var/tmp/qa`).
-* On Claude Cloud, direct TCP goes through a TLS middlebox and an HTTPS proxy, and UDP 7844 is refused. See
-  `docs/hosted-sessions.md` for Antigravity / Gemini Cloud network, daemon watcher and VM limits.
-
-## How to work here
-
-* Build with `TMPDIR=/tmp CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0` (or source `. ./scripts/cloud-env.sh`).
-* After a change of a document or help text, run `cargo test --bin podnet write_the_llms_files -- --ignored`.
-* The local gate: `TMPDIR=/tmp sh scripts/agent/check.sh` (or `notest` and the tests of the touched crates),
-  `cargo clippy --workspace --all-targets --features full -- -D warnings`.
-
-## Known flakes under load
-
-`service_serve_ingress::the_service_ends_with_the_serve_process`, `shim_direct::a_perl_accept_loop_serves_each_connection`,
-`ws_relay::...::a_demoted_relay_host_recovers_on_success`, `autostart::sigterm_is_a_clean_stop`,
-`doctor_ssh_relay_row_dials_through_the_proxy`, `supervisor::a_planned_end_is_not_restarted`, `doctor_quick_ends_in_the_limit`,
-`guest_wire_unix_socket_serves_a_guest_and_the_next`. Run a failed test alone three times before you conclude a regression.
+  `/home/antigravity/PodUtils/podnet` on Antigravity): on Antigravity, the lead creates each local worktree
+  (`git worktree add -b NAME .claude/worktrees/NAME main`) before invoking the worker (`docs/hosted-sessions.md`), and
+  workers serialize Cargo builds on 2-vCPU VMs with `flock /tmp/podnet-cargo.lock` sharing `CARGO_TARGET_DIR`.
+* A step of `live.yml` runs under `bash -eo pipefail` (`scripts/live-step.sh`): give `grep` `|| true` where no match is
+  normal.
+* `report::tests::the_log_filter_names_each_pod_crate_of_podnet` needs each new `pod-*` crate of `Cargo.toml` in
+  `crates/podnet-core/src/report.rs`; `each_variable_of_the_code_is_a_fact` needs each new variable in
+  `src/manual/facts.rs`; every test that binds loopback must start with `need_loopback!()`.
+* After a change of a document, help text, or version, run `cargo test --bin podnet -- --ignored write_the_llms_files`.
+* On Antigravity, the VM kernel has no `nf_tables` module, so the three `router::kernel` namespace tests fail locally
+  with `nf_tables table podnet_router: No such file or directory`; CI runners have `nf_tables` and run them cleanly.
+* The forge mirror answers 403 at times for Actions lists and job logs: use `gh run list` / `gh run view` /
+  `gh api --allow-escape-sequences`.
 
 ## Open COORD issues
 
 | Issue | Waits for |
 | --- | --- |
+| `#801` (COORD-143, hand-off of `v0.4.0-beta.21`) | The other sessions read it; then close through the record. |
+| `#800` (COORD-142, QA beta.21 follow-ups in `pod-proxy`, `pod-derp`, `pod-core`, `pod-warp`) | A tag of podcrates with the fixes. |
 | `#799` (COORD-141, Gemini / Antigravity Cloud role table and startup flags) | podcrates adds the column to its shared `docs/hosted-sessions.md` table. |
-| `#756` (COORD-126, `pod-session` `move_under`) | A tag with it (T-476). |
-| `#753` (COORD-123, `pod-dns` cuts a line inside a cause) | A tag with the fix (T-575). |
-| `#754` (COORD-124, `pod-proxy`, a proxy command that does not exist) | A tag with the fix (T-580). |
-| `#755` (COORD-125, `pod-cloudflare`, the DoH wait of the edge discovery) | A tag with the fix (T-579). |
-| `#654` (COORD-107, takes of podcrates) | A `state:` line at each take. |
-| `#777` (COORD-132, the hand-off of beta.20) | The other sessions read it; then close it through the record. |
-| `#776` (COORD-131, `pod-link`: the TCP probe names the IPv6 try) | A tag with the fix (T-598). |
-| `#760` (COORD-130, a shared headscale harness) | podcrates writes it (T-114, T-115). |
-| `#758` (COORD-128, the capture hook of `pod-cloudflare`) | A tag with it (T-244). |
-| `#759` (COORD-129, the hand-off of beta.19) | The other sessions read it; then close it through the record. |
+| `#785` (COORD-140, `pod-egress` Trojan accept parser and Shadowsocks accept API) | A tag of podcrates (T-295). |
+| `#784` (COORD-139, `podnet pod` inbound socket cleanup for PodUtils/podrunner#369) | podrunner takes `v0.4.0-beta.21` and closes #369. |
+| `#783` (COORD-138, `pod-derp` take and neutral derper test names) | podcrates reads / updates tests. |
+| `#782` (COORD-137, `pod-egress` Wisp reopen, stand-ins feature, SS-over-WS key file, Wisp password) | A tag of podcrates. |
+| `#781` (COORD-136, `pod-cloudflare` capture hook gaps) | A tag of podcrates (T-244). |
+| `#780` (COORD-135, `pod-acme` account contact and stand-in feature) | A tag of podcrates. |
+| `#779` (COORD-134, `pod-proxy` TLS hop for process `https://` proxy) | A tag of podcrates (T-614). |
+| `#778` (COORD-133, take of podcrates `v0.86.0`) | podcrates reads it; then close through the record. |
+| `#777` (COORD-132, hand-off of `v0.4.0-beta.20`) | The other sessions read it; then close through the record. |
+| `#760` (COORD-130, shared headscale harness) | podcrates writes it (T-114, T-115). |
+| `#759` (COORD-129, hand-off of `v0.4.0-beta.19`) | The other sessions read it; then close through the record. |
+| `#654` (COORD-107, coordinator channel / takes of podcrates) | A `state:` line at each take. |
 | `#604` (COORD-098, relay holds a lost socket) | The relay fix (T-406, T-478). |
-| `#413` (COORD-006) | T-161 and T-200 (`pod-relay`). |
+| `#413` (COORD-006, asks for `pod-relay`, `pod-dns`, `pod-proxy`, `pod-services`) | T-161 and T-200 (`pod-relay`). |

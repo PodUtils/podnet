@@ -485,5 +485,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #798 | [qa 0.4.0-beta.21] pod: --log-format json does not apply; the lines of the pod stay plain text | closed: T-632 done (`62e7195`, black-box QA pass of 0.4.0-beta.21, 2026-11-27; the test is in its Done section) | T-632 |
 | #799 | COORD-141: hosted-sessions role table and startup flags for Gemini / Antigravity Cloud (to podcrates) | open (a COORD issue between sessions) | none |
 | #800 | COORD-142: QA beta.21 follow-ups for pod-proxy, pod-derp, pod-core and pod-warp (to podcrates) | open (a COORD issue between sessions; the upstream asks of T-623, T-625, T-626 and T-630) | none |
+| #801 | COORD-143: podnet v0.4.0-beta.21 is out: the files, their SHA-256 and the image by digest (to all) | open (a COORD issue between sessions) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556, #557 and #680 to #684 are closed; they are pull requests.
