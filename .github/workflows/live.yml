@@ -264,6 +264,10 @@ jobs:
           sh scripts/retry.sh sudo python3 -m pip install -q --break-system-packages websockets || true
           sh scripts/live-throughput.sh target/release/podnet quic 16
           sh scripts/live-throughput.sh target/release/podnet http2 16
+      # T-221: compare podnet and cloudflared quick tunnels with podnet bench --json.
+      - name: Benchmark comparison, podnet vs cloudflared
+        timeout-minutes: 10
+        run: sh scripts/live-bench-compare.sh target/release/podnet 10 4
       # Issue 92: share uploads of 20 and 64 MiB on each leg give 200 and
       # the file; a request over --max-request gets 413; the session stays.
       - name: Large share uploads, QUIC and HTTP/2
