@@ -253,6 +253,8 @@ With `--upload`, a write user (or a visitor with the PIN) can add files:
   read user are refused (403 or 409).
 
 ```sh
+mkdir -p share/inbox
+printf '%s\n' "$PASSWORD" | podnet serve --add-user bob:write --users users
 podnet serve --dir ./share --list --upload --users users --local 127.0.0.1:8080
 curl -fsS -u bob -T report.pdf http://127.0.0.1:8080/inbox/report.pdf
 ```
