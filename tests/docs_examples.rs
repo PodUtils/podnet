@@ -37,6 +37,7 @@ mod docs_examples {
 
     #[test]
     fn the_upload_example_of_serve_md_runs_as_written() {
+        pod_testkit::need_loopback!();
         let root = Path::new(env!("CARGO_MANIFEST_DIR"));
         let doc = std::fs::read_to_string(root.join("docs/serve.md")).unwrap();
         let lines = extract_uploads_block(&doc);
