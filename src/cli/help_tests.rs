@@ -221,7 +221,11 @@ fn an_unknown_word_does_not_promise_a_newer_release() {
         (&["podnet", "frobnicate"], None, true),
         (&["podnet", "--bogus-flag"], None, true),
         (&["podnet", "tunnel", "--bogus"], None, true),
-        (&["podnet", "tunnel", "--protocl", "quic"], Some("--protocol"), false),
+        (
+            &["podnet", "tunnel", "--protocl", "quic"],
+            Some("--protocol"),
+            false,
+        ),
     ];
     for &(argv, suggestion, want_help_hint) in cases {
         let err = top_command().try_get_matches_from(argv).unwrap_err();
@@ -233,7 +237,10 @@ fn an_unknown_word_does_not_promise_a_newer_release() {
             "{argv:?}: false update promise: {joined:?}"
         );
         if let Some(tip) = suggestion {
-            assert!(rendered.contains(tip), "{argv:?}: lost clap tip {tip}: {rendered}");
+            assert!(
+                rendered.contains(tip),
+                "{argv:?}: lost clap tip {tip}: {rendered}"
+            );
             assert!(
                 hints.is_empty(),
                 "{argv:?}: extra hint hides clap tip: {hints:?}"

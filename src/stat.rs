@@ -589,7 +589,11 @@ mod tests {
 #[test]
 fn a_peer_name_that_does_not_resolve_exits_68() {
     let cases = [
-        ("x.invalid:9", crate::exit::NO_HOST, Some("--resolve HOST=IP")),
+        (
+            "x.invalid:9",
+            crate::exit::NO_HOST,
+            Some("--resolve HOST=IP"),
+        ),
         (
             "nope.invalid:443",
             crate::exit::NO_HOST,
@@ -606,11 +610,7 @@ fn a_peer_name_that_does_not_resolve_exits_68() {
             ..Default::default()
         })
         .unwrap_err();
-        assert_eq!(
-            crate::exit::code_of(&err),
-            want_code,
-            "{peer}: {err:#}"
-        );
+        assert_eq!(crate::exit::code_of(&err), want_code, "{peer}: {err:#}");
         let line = crate::report::error_line(&err);
         if let Some(hint) = want_hint {
             assert!(line.contains(hint), "{peer}: {line}");
