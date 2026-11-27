@@ -371,6 +371,7 @@ async fn serve_connect_udp(
         SocketAddr::V4(_) => (Ipv4Addr::UNSPECIFIED, 0).into(),
         SocketAddr::V6(_) => (Ipv6Addr::UNSPECIFIED, 0).into(),
     };
+    // egress-exempt: local loopback stand-in forwarding CONNECT-UDP in tests.
     let Ok(sock) = UdpSocket::bind(bind).await else {
         return;
     };

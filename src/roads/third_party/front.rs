@@ -92,14 +92,20 @@ pub async fn check_front(
     };
 
     let bound = timeout.min(MAX_FRONT_CHECK_TIMEOUT);
-    match tokio::time::timeout(bound, probe_http_front(&addr, &target_label)).await {
+    match tokio::time::timeout(bound, probe_http_front(&addr, &host, port, &target_label)).await {
         Ok(Ok(())) => Ok(()),
         Ok(Err(reason)) => Err(err(reason)),
         Err(_) => Err(err(format!("timed out after {} ms", bound.as_millis()))),
     }
 }
 
-async fn probe_http_front(addr: &str, target_host: &str) -> Result<(), String> {
+async fn probe_http_front(
+    addr: &str,
+    host: &str,
+    port: u16,
+    target_host: &str,
+) -> Result<(), String> {
+    crate::policy::permit(host, port).map_err(|r| r.reason)?;
     let mut stream = TcpStream::connect(addr)
         .await
         .map_err(|e| format!("connect failed: {e}"))?;

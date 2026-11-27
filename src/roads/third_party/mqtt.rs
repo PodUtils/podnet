@@ -298,6 +298,7 @@ pub struct MqttClient {
 impl MqttClient {
     /// Connect to an MQTT 3.1.1 broker, run `CONNECT`/`CONNACK` and `SUBSCRIBE`/`SUBACK`.
     pub async fn connect(endpoint: &MqttEndpoint) -> Result<Self> {
+        crate::policy::permit_fault(&endpoint.host, endpoint.port)?;
         let mut stream = TcpStream::connect(endpoint.authority())
             .await
             .with_context(|| format!("connect MQTT road {}", endpoint.authority()))?;

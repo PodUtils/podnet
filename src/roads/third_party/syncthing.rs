@@ -310,6 +310,7 @@ pub async fn join_session<S: AsyncRead + AsyncWrite + Unpin>(
 /// Dial a Syncthing relay over TCP, request a session for `endpoint.device_id`,
 /// and open a joined bidirectional session stream.
 pub async fn dial_tcp(endpoint: &SyncthingEndpoint) -> Result<TcpStream> {
+    crate::policy::permit_fault(&endpoint.host, endpoint.port)?;
     let mut ctrl = TcpStream::connect(endpoint.authority())
         .await
         .with_context(|| format!("connect Syncthing relay {}", endpoint.authority()))?;
@@ -318,6 +319,7 @@ pub async fn dial_tcp(endpoint: &SyncthingEndpoint) -> Result<TcpStream> {
         RelayMessage::SessionInvitation { key, .. } => key,
         _ => unreachable!(),
     };
+    crate::policy::permit_fault(&endpoint.host, endpoint.port)?;
     let data = TcpStream::connect(endpoint.authority())
         .await
         .with_context(|| format!("open Syncthing session socket {}", endpoint.authority()))?;
@@ -332,6 +334,7 @@ pub async fn dial_tls(
     server_name: ServerName<'static>,
 ) -> Result<tokio_rustls::client::TlsStream<TcpStream>> {
     let connector = TlsConnector::from(tls_config);
+    crate::policy::permit_fault(&endpoint.host, endpoint.port)?;
     let tcp_ctrl = TcpStream::connect(endpoint.authority())
         .await
         .with_context(|| format!("connect Syncthing TLS relay {}", endpoint.authority()))?;
@@ -344,6 +347,7 @@ pub async fn dial_tls(
         RelayMessage::SessionInvitation { key, .. } => key,
         _ => unreachable!(),
     };
+    crate::policy::permit_fault(&endpoint.host, endpoint.port)?;
     let tcp_data = TcpStream::connect(endpoint.authority())
         .await
         .with_context(|| format!("connect Syncthing TLS session {}", endpoint.authority()))?;

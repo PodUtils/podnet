@@ -192,6 +192,7 @@ pub struct IrcStream {
 impl IrcStream {
     /// Connect to `endpoint`, perform `NICK`/`USER`/`JOIN`, and bridge a duplex stream.
     pub async fn connect(endpoint: &IrcEndpoint) -> Result<Self> {
+        crate::policy::permit_fault(&endpoint.host, endpoint.port)?;
         let tcp = TcpStream::connect(endpoint.authority())
             .await
             .with_context(|| format!("connect IRC road {}", endpoint.authority()))?;

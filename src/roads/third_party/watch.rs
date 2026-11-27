@@ -29,14 +29,20 @@ pub async fn probe_road(
         return state;
     };
 
-    let target = match extract_tcp_target(road.kind, endpoint) {
-        Ok(addr) => addr,
+    let (host, port, target) = match extract_tcp_target(road.kind, endpoint) {
+        Ok(parsed) => parsed,
         Err(reason) => {
             let state = WatchState::degraded(format!("road {}: {reason}", road.name));
             road.state = state.clone();
             return state;
         }
     };
+
+    if let Err(refused) = crate::policy::permit(&host, port) {
+        let state = WatchState::degraded(format!("road {}: {}", road.name, refused.reason));
+        road.state = state.clone();
+        return state;
+    }
 
     match tokio::time::timeout(timeout, TcpStream::connect(&target)).await {
         Ok(Ok(_stream)) => {
@@ -81,7 +87,10 @@ pub async fn probe_registry(
     results
 }
 
-fn extract_tcp_target(kind: ThirdPartyKind, endpoint: &str) -> Result<String, String> {
+fn extract_tcp_target(
+    kind: ThirdPartyKind,
+    endpoint: &str,
+) -> Result<(String, u16, String), String> {
     let trimmed = endpoint.trim();
     if trimmed.is_empty() {
         return Err("empty endpoint".to_string());
@@ -110,9 +119,10 @@ fn extract_tcp_target(kind: ThirdPartyKind, endpoint: &str) -> Result<String, St
         });
     let authority = rest.split(['/', '?']).next().unwrap_or("").trim();
     let (host, port) = split_host_port(authority, default_port).map_err(|e| e.to_string())?;
-    if host.contains(':') {
-        Ok(format!("[{host}]:{port}"))
+    let target = if host.contains(':') {
+        format!("[{host}]:{port}")
     } else {
-        Ok(format!("{host}:{port}"))
-    }
+        format!("{host}:{port}")
+    };
+    Ok((host, port, target))
 }
