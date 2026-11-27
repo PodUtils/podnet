@@ -3418,7 +3418,7 @@ A shell probe with `HOME=$(mktemp -d)`: put a user file at the fish path, run `p
 
 - `docs/warp.md:95-105`. src/warp/proxy.rs:507-527 at `9c1fc4b` (the dial closure: `rules::current()`, `decide_static`, three actions).
 - `src/cli/cmd/warp/args.rs:369-373` (help). src/warp/rules.rs:304-309 at `9c1fc4b`, tests :316-331 at `9c1fc4b`.
-- `TODO/deferred.md:91` (T-002) says the rules apply from commit db6dbe6.
+- `TODO/deferred.md:93` (T-002) says the rules apply from commit db6dbe6.
 - No other file says that the rules do not apply: `grep -rn "rules do not apply" README.md docs` finds none.
 
 ## Approach
@@ -8559,7 +8559,7 @@ Let's Encrypt, not the pinned MASQUE key (it is an extra candidate of the script
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** partial
+**Status:** blocked
 
 ## Problem
 
@@ -8591,6 +8591,11 @@ python3 scripts/check-workflows.py
 # live: the step passes; a warning "T-414" names a recovery that needed a client
 ```
 
+## Blocker
+
+COORD-144 (PodUtils/podnet#802, to podcrates): `pod-warp` idle MASQUE HTTP/2 TCP RST detection. Steps 1 to 3 of
+podnet are done.
+
 ## Correction
 
 2026-11-17, steps 1 and 2 in `.github/workflows/live.yml`, the step "WARP proxy". Step 3 waits for the next warning.
@@ -8612,6 +8617,11 @@ WARP proxy at 127.0.0.1:40012 was refused; podnet's last line: "the MASQUE sessi
 1.1.1.1:53 through it got no answer (1.1.1.1:53: no answer in 5000 ms)". The proxy ended on the failed health check.
 Attempt 1 of the same run failed at the WARP API (HTTP 429, error 1015, T-397). The same code passed `live`
 45317818764 on `1634d0a`.
+2026-11-27, step 3 done: reproduced locally against Cloudflare MASQUE (`162.159.198.2:443`) via an HTTP `CONNECT` proxy
+that sent TCP RST (`SO_LINGER=1,0`) after 8 s idle. `pod_warp::session` logged nothing for 20 s (`20:36:12Z` to
+`20:36:32Z`); only when a client arrived at `20:36:32.115Z` (and failed with `curl` exit 97, SOCKS5 error 4) did
+`pod_warp::session` log `connection reset` and open a new session (`20:36:32.549Z`). Evidence filed in COORD-144
+(PodUtils/podnet#802, to podcrates).
 
 # T-415: live: the first request through the WARP proxy gets a reset 5 s after the start
 
@@ -8651,6 +8661,9 @@ python3 scripts/check-workflows.py
 ## Correction
 
 2026-11-17, step 1 in `.github/workflows/live.yml`, the step "WARP proxy". Step 2 waits for the next warning.
+2026-11-27: 5/5 live trials on `v0.4.0-beta.21` (immediate `curl` to `https://www.cloudflare.com/cdn-cgi/trace` as soon
+as `podnet warp proxy` listened) succeeded with `warp=on` in 115 to 417 ms and zero resets; step 2 stays ready in
+`live.yml` if a reset recurs.
 
 # T-418: ssh-relay asks for a remote forward on 0.0.0.0, and localhost.run reads it as a custom domain
 
@@ -11367,7 +11380,7 @@ step "Throughput through WARP, 1 to 16 MiB" (`scripts/live-throughput.sh`); the 
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** partial
+**Status:** blocked
 
 ## Problem
 
@@ -11395,6 +11408,11 @@ first POST of 1 MiB, the same way. Each other request of the step passed.
 sh scripts/live-throughput.sh target/release/podnet quic "1 4 16" warp
 ```
 
+## Blocker
+
+COORD-144 (PodUtils/podnet#802, to podcrates): decision on whether `pod-cloudflare` defaults quick tunnels to
+`ha_connections = 1` (matching `cloudflared`) while keeping `2` for named tunnels.
+
 ## Correction
 
 2026-11-20: `live` 44712072334 on `ab0612d` (the take of podcrates `v0.79.0`, T-501) failed in the step "Throughput
@@ -11413,9 +11431,10 @@ POST of 16 MiB over `http2+direct` got HTTP 530, `cf-ray` `a5f4e5494c61e3c6-IAD`
 step is the code of `cca0b3d`, whose `live` 45289544910 passed. The failed job runs again.
 2026-11-27: direct measurements on `0.4.0-beta.21` (`90f2679`) saw 0 HTTP 530s for both `--ha-connections 1` and `2`:
 HTTP/2 3 rounds x 20 GETs each (0/60 each) and QUIC 5 rounds x (1 MiB POST + 20 GETs) each (0/5 POSTs and 0/100 GETs
-each). Source check of `cloudflare/cloudflared:cmd/cloudflared/tunnel/quick_tunnel.go` confirms `cloudflared` overrides
-`ha-connections` to `1` for every quick tunnel (`sc.c.Set(flags.HaConnections, "1")`). The remaining 20-round WARP
-measurement waits to avoid registering unnecessary WARP devices (`docs/decisions.md`, WARP devices).
+each). QUIC over WARP (`--ha-connections 1`, 5 rounds x (1 MiB POST + 20 GETs)) saw 5/5 1 MiB POSTs 200, 99/100 GETs
+200 and 0 HTTP 530s before `api.trycloudflare.com` returned HTTP 429 (error 1015, Retry-After 3600 s). Source check of
+`cloudflare/cloudflared:cmd/cloudflared/tunnel/quick_tunnel.go` confirms `cloudflared` overrides `ha-connections` to
+`1` for every quick tunnel (`sc.c.Set(flags.HaConnections, "1")`). Handed off to `podcrates` in COORD-144 (#802).
 
 # T-489: Take podcrates v0.74.0
 

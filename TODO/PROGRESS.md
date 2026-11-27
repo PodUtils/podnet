@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 631 entries: 0 open, 8 partial, 28 blocked, 595 done.
+`TODO/INDEX.md` holds 631 entries: 0 open, 6 partial, 27 blocked, 598 done.
 
 ## State
 
@@ -20,9 +20,11 @@
   `wisp:`, DERP, ACME, TCP direction split, `tunnel --inspect`), `pod` inbound socket cleanup (T-619,
   PodUtils/podrunner#369), and the fixes of the QA pass #786 to #798 (T-620 to T-632). COORD-143 (#801) hands off the
   files and the digests.
-- Deferred feature consolidation (`4df28952`): T-365, T-366, T-369 to T-373, and T-376 to T-378 are done; T-367
-  (GitHub #486) stays partial on MASQUE `QUIC-1` to `QUIC-5`; T-368 (#489), T-374 (#497), and T-375 (#498) stay
-  blocked.
+- Post-beta.21 on `main`: T-367 (GitHub #486, MASQUE `QUIC-1` to `QUIC-5`), T-368 (GitHub #489, all six third-party
+  road and `status` dependency capabilities; upstream `pod-services` `irc` + multi-vantage watch asked in COORD-145
+  #803), T-221 step 4 (`scripts/live-bench-compare.sh` in `live.yml`), T-247 (NetBird netstack on a proxy-only host
+  plus `podnet pod` `netbird:[PORT]` fix), COORD-144 (#802, T-414 + T-488 asks to podcrates), and GitHub #89 test
+  guide refresh. T-374 (#497) and T-375 (#498) stay blocked.
 - Hard-problems fixes (`docs/research/podnet/hard-problems-results.md`, `4df28952`): T-507 (H-02), T-508 (H-04), T-509
   (H-05), H-10 (`docs/warp.md`), H-11 (`scripts/live-throughput.sh`), and H-19 (`tests/transfer_relay.rs` `160 KiB` cap
   test move; T-476 done in `v0.86.0`).
@@ -78,20 +80,20 @@ not wait for a larger one.
    transfer by code (`podnet send` and `podnet receive` over `pod-wormhole`; `docs/transfer.md`; `docs/decisions.md`,
    2026-11-13, The transfer layer). Each entry is done (the TCP part of the direction split too, 2026-11-26).
 8. **M7, the pods:** no open entry. The hold of a SYN in `pod-hold` (PodUtils/podcrates#68) can start.
-9. **M8, the overlays:** T-114 and T-115 (blocked: a shared headscale harness, COORD-130 #760), T-247 (blocked: a NetBird account).
+9. **M8, the overlays:** T-114 and T-115 (blocked: a shared headscale harness, COORD-130 #760).
 10. **M9, later:** T-123 and T-124 are blocked: podcrates `v0.86.0` has no `pod-ts` (the entry of `pod-ts` in podcrates is open). The proxy of
     the process `https://` is T-614, blocked on COORD-134 #779. T-001: edit GitHub #89 into a guide that a new client
     tests from (blocked: the owner).
 11. **Blocked on `PodUtils/podcrates` (a COORD issue (to podcrates) for each):** T-161 and T-200
-    (`pod-relay`: a relay that serves the call; the control host only), T-244 (`pod-cloudflare`); and the link
-    entry T-295.
+    (`pod-relay`: a relay that serves the call; the control host only), T-244 (`pod-cloudflare`), T-368 (`pod-services`,
+    COORD-145 #803), T-414 and T-488 (COORD-144 #802); and the link entry T-295.
 12. **The link workstream (GitHub #466 to #476), after podnet's own work (M9, P3):** the open entries of `TODO/link.md`:
     T-283 and T-284 (blocked: each is a take of `pod-link`), and T-295 (blocked: a parser of a Trojan request in `pod-egress`, COORD-140 #785). The
     other entries of `TODO/link.md` are done. `docs/link.md` describes the built part. `docs/decisions.md`, 2026-11-12,
     The link workstream, has the calls and the asks for podcrates.
 13. **The asks of cfb, after podnet's own work** (the owner, 2026-11-09, Priority: podvm, podnet and
     podssh first; cfb and githome wait):
-    T-221 (`bench`), T-219 and T-220 (blocked on `pod-unit`, `pod-relay`).
+    T-219 and T-220 (blocked on `pod-unit`, `pod-relay`).
 14. **The asks of podswarm (PodUtils/podcrates#125), after podnet's own work (P3; each has a fallback in podswarm):**
     N-4 (one flow over several uplinks) is answered in `docs/router.md`: per flow only;
     the optional packet sidecar (feature `sidecar`, off by default) adds per-flow link bonding.

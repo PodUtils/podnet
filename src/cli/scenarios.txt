@@ -10,7 +10,7 @@ autostart add | live:Autostart with a systemd user unit
 autostart remove | live:Autostart with a systemd user unit
 autostart list | lane:local
 autostart run | live:Autostart with a systemd user unit
-bench | lane:errors; lane:net-bench
+bench | live:Benchmark comparison, podnet vs cloudflared; lane:errors; lane:net-bench
 bug-report | lane:local
 ci check | lane:local-files
 completions | lane:local
@@ -85,7 +85,7 @@ sidecar bond |
 ssh-relay | live:A unix socket through a public SSH relay
 status | lane:local
 stop | live:File server through a quick tunnel; live:Git over HTTPS through a quick tunnel; live:File server through the reverse relay; live:200 MiB each way through the reverse relay with --resume; live:Git over SSH through the reverse relay; live:warp tun --default-route (root), then everything as before; live:warp tun --default-route with no default route (proxy only); live:An IPv6-only host; live:Router with WARP, the relay and a failover
-tunnel | live:SIGTERM between the ready line and the verify; live:Throughput of the HTTP path and of a --forward WebSocket; live:WebSocket through a --url origin; live:Throughput through WARP, 1 to 16 MiB; live:The test box; live:The test box fails with a binary that exits 3; lane:errors
+tunnel | live:SIGTERM between the ready line and the verify; live:Throughput of the HTTP path and of a --forward WebSocket; live:Benchmark comparison, podnet vs cloudflared; live:WebSocket through a --url origin; live:Throughput through WARP, 1 to 16 MiB; live:The test box; live:The test box fails with a binary that exits 3; lane:errors
 tunnel inspect list |
 tunnel inspect show |
 tunnel inspect replay |

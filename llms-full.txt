@@ -5323,8 +5323,9 @@ podnet warp
         Do not try the WebSocket relay (--relay, PODNET_RELAY) when the direct
         MASQUE path fails. Without it, podnet tries the relay: the TLS to the
         front door stays end to end in the WebSocket.
-    --masque-endpoint IP:PORT
-        The MASQUE front door (IP:PORT) in place of the one of the device.
+    --masque-endpoint ENDPOINT
+        The MASQUE front door (IP:PORT, HOST:PORT, or https://HOST[:PORT]) in
+        place of the one of the device.
     --masque-sni NAME
         The TLS name of the MASQUE front door in place of
         consumer-masque.cloudflareclient.com.
@@ -5461,8 +5462,9 @@ podnet warp register
         Do not try the WebSocket relay (--relay, PODNET_RELAY) when the direct
         MASQUE path fails. Without it, podnet tries the relay: the TLS to the
         front door stays end to end in the WebSocket.
-    --masque-endpoint IP:PORT
-        The MASQUE front door (IP:PORT) in place of the one of the device.
+    --masque-endpoint ENDPOINT
+        The MASQUE front door (IP:PORT, HOST:PORT, or https://HOST[:PORT]) in
+        place of the one of the device.
     --masque-sni NAME
         The TLS name of the MASQUE front door in place of
         consumer-masque.cloudflareclient.com.
@@ -5601,8 +5603,9 @@ podnet warp status
         Do not try the WebSocket relay (--relay, PODNET_RELAY) when the direct
         MASQUE path fails. Without it, podnet tries the relay: the TLS to the
         front door stays end to end in the WebSocket.
-    --masque-endpoint IP:PORT
-        The MASQUE front door (IP:PORT) in place of the one of the device.
+    --masque-endpoint ENDPOINT
+        The MASQUE front door (IP:PORT, HOST:PORT, or https://HOST[:PORT]) in
+        place of the one of the device.
     --masque-sni NAME
         The TLS name of the MASQUE front door in place of
         consumer-masque.cloudflareclient.com.
@@ -5748,8 +5751,9 @@ podnet warp license
         Do not try the WebSocket relay (--relay, PODNET_RELAY) when the direct
         MASQUE path fails. Without it, podnet tries the relay: the TLS to the
         front door stays end to end in the WebSocket.
-    --masque-endpoint IP:PORT
-        The MASQUE front door (IP:PORT) in place of the one of the device.
+    --masque-endpoint ENDPOINT
+        The MASQUE front door (IP:PORT, HOST:PORT, or https://HOST[:PORT]) in
+        place of the one of the device.
     --masque-sni NAME
         The TLS name of the MASQUE front door in place of
         consumer-masque.cloudflareclient.com.
@@ -5886,8 +5890,9 @@ podnet warp rotate
         Do not try the WebSocket relay (--relay, PODNET_RELAY) when the direct
         MASQUE path fails. Without it, podnet tries the relay: the TLS to the
         front door stays end to end in the WebSocket.
-    --masque-endpoint IP:PORT
-        The MASQUE front door (IP:PORT) in place of the one of the device.
+    --masque-endpoint ENDPOINT
+        The MASQUE front door (IP:PORT, HOST:PORT, or https://HOST[:PORT]) in
+        place of the one of the device.
     --masque-sni NAME
         The TLS name of the MASQUE front door in place of
         consumer-masque.cloudflareclient.com.
@@ -6024,8 +6029,9 @@ podnet warp delete
         Do not try the WebSocket relay (--relay, PODNET_RELAY) when the direct
         MASQUE path fails. Without it, podnet tries the relay: the TLS to the
         front door stays end to end in the WebSocket.
-    --masque-endpoint IP:PORT
-        The MASQUE front door (IP:PORT) in place of the one of the device.
+    --masque-endpoint ENDPOINT
+        The MASQUE front door (IP:PORT, HOST:PORT, or https://HOST[:PORT]) in
+        place of the one of the device.
     --masque-sni NAME
         The TLS name of the MASQUE front door in place of
         consumer-masque.cloudflareclient.com.
@@ -6165,8 +6171,9 @@ podnet warp probe
         Do not try the WebSocket relay (--relay, PODNET_RELAY) when the direct
         MASQUE path fails. Without it, podnet tries the relay: the TLS to the
         front door stays end to end in the WebSocket.
-    --masque-endpoint IP:PORT
-        The MASQUE front door (IP:PORT) in place of the one of the device.
+    --masque-endpoint ENDPOINT
+        The MASQUE front door (IP:PORT, HOST:PORT, or https://HOST[:PORT]) in
+        place of the one of the device.
     --masque-sni NAME
         The TLS name of the MASQUE front door in place of
         consumer-masque.cloudflareclient.com.
@@ -6310,8 +6317,9 @@ podnet warp exit
         Do not try the WebSocket relay (--relay, PODNET_RELAY) when the direct
         MASQUE path fails. Without it, podnet tries the relay: the TLS to the
         front door stays end to end in the WebSocket.
-    --masque-endpoint IP:PORT
-        The MASQUE front door (IP:PORT) in place of the one of the device.
+    --masque-endpoint ENDPOINT
+        The MASQUE front door (IP:PORT, HOST:PORT, or https://HOST[:PORT]) in
+        place of the one of the device.
     --masque-sni NAME
         The TLS name of the MASQUE front door in place of
         consumer-masque.cloudflareclient.com.
@@ -6476,8 +6484,9 @@ podnet warp export
         Do not try the WebSocket relay (--relay, PODNET_RELAY) when the direct
         MASQUE path fails. Without it, podnet tries the relay: the TLS to the
         front door stays end to end in the WebSocket.
-    --masque-endpoint IP:PORT
-        The MASQUE front door (IP:PORT) in place of the one of the device.
+    --masque-endpoint ENDPOINT
+        The MASQUE front door (IP:PORT, HOST:PORT, or https://HOST[:PORT]) in
+        place of the one of the device.
     --masque-sni NAME
         The TLS name of the MASQUE front door in place of
         consumer-masque.cloudflareclient.com.
@@ -6630,8 +6639,9 @@ podnet warp scan
         Do not try the WebSocket relay (--relay, PODNET_RELAY) when the direct
         MASQUE path fails. Without it, podnet tries the relay: the TLS to the
         front door stays end to end in the WebSocket.
-    --masque-endpoint IP:PORT
-        The MASQUE front door (IP:PORT) in place of the one of the device.
+    --masque-endpoint ENDPOINT
+        The MASQUE front door (IP:PORT, HOST:PORT, or https://HOST[:PORT]) in
+        place of the one of the device.
     --masque-sni NAME
         The TLS name of the MASQUE front door in place of
         consumer-masque.cloudflareclient.com.
@@ -6809,8 +6819,9 @@ podnet warp forward
         Do not try the WebSocket relay (--relay, PODNET_RELAY) when the direct
         MASQUE path fails. Without it, podnet tries the relay: the TLS to the
         front door stays end to end in the WebSocket.
-    --masque-endpoint IP:PORT
-        The MASQUE front door (IP:PORT) in place of the one of the device.
+    --masque-endpoint ENDPOINT
+        The MASQUE front door (IP:PORT, HOST:PORT, or https://HOST[:PORT]) in
+        place of the one of the device.
     --masque-sni NAME
         The TLS name of the MASQUE front door in place of
         consumer-masque.cloudflareclient.com.
@@ -7032,8 +7043,9 @@ podnet warp proxy
         Do not try the WebSocket relay (--relay, PODNET_RELAY) when the direct
         MASQUE path fails. Without it, podnet tries the relay: the TLS to the
         front door stays end to end in the WebSocket.
-    --masque-endpoint IP:PORT
-        The MASQUE front door (IP:PORT) in place of the one of the device.
+    --masque-endpoint ENDPOINT
+        The MASQUE front door (IP:PORT, HOST:PORT, or https://HOST[:PORT]) in
+        place of the one of the device.
     --masque-sni NAME
         The TLS name of the MASQUE front door in place of
         consumer-masque.cloudflareclient.com.
@@ -7218,8 +7230,9 @@ podnet warp up
         Do not try the WebSocket relay (--relay, PODNET_RELAY) when the direct
         MASQUE path fails. Without it, podnet tries the relay: the TLS to the
         front door stays end to end in the WebSocket.
-    --masque-endpoint IP:PORT
-        The MASQUE front door (IP:PORT) in place of the one of the device.
+    --masque-endpoint ENDPOINT
+        The MASQUE front door (IP:PORT, HOST:PORT, or https://HOST[:PORT]) in
+        place of the one of the device.
     --masque-sni NAME
         The TLS name of the MASQUE front door in place of
         consumer-masque.cloudflareclient.com.
@@ -7371,8 +7384,9 @@ podnet warp down
         Do not try the WebSocket relay (--relay, PODNET_RELAY) when the direct
         MASQUE path fails. Without it, podnet tries the relay: the TLS to the
         front door stays end to end in the WebSocket.
-    --masque-endpoint IP:PORT
-        The MASQUE front door (IP:PORT) in place of the one of the device.
+    --masque-endpoint ENDPOINT
+        The MASQUE front door (IP:PORT, HOST:PORT, or https://HOST[:PORT]) in
+        place of the one of the device.
     --masque-sni NAME
         The TLS name of the MASQUE front door in place of
         consumer-masque.cloudflareclient.com.
@@ -7516,8 +7530,9 @@ podnet warp env
         Do not try the WebSocket relay (--relay, PODNET_RELAY) when the direct
         MASQUE path fails. Without it, podnet tries the relay: the TLS to the
         front door stays end to end in the WebSocket.
-    --masque-endpoint IP:PORT
-        The MASQUE front door (IP:PORT) in place of the one of the device.
+    --masque-endpoint ENDPOINT
+        The MASQUE front door (IP:PORT, HOST:PORT, or https://HOST[:PORT]) in
+        place of the one of the device.
     --masque-sni NAME
         The TLS name of the MASQUE front door in place of
         consumer-masque.cloudflareclient.com.
@@ -7706,8 +7721,9 @@ podnet warp exec
         Do not try the WebSocket relay (--relay, PODNET_RELAY) when the direct
         MASQUE path fails. Without it, podnet tries the relay: the TLS to the
         front door stays end to end in the WebSocket.
-    --masque-endpoint IP:PORT
-        The MASQUE front door (IP:PORT) in place of the one of the device.
+    --masque-endpoint ENDPOINT
+        The MASQUE front door (IP:PORT, HOST:PORT, or https://HOST[:PORT]) in
+        place of the one of the device.
     --masque-sni NAME
         The TLS name of the MASQUE front door in place of
         consumer-masque.cloudflareclient.com.
@@ -7866,8 +7882,9 @@ podnet warp shell
         Do not try the WebSocket relay (--relay, PODNET_RELAY) when the direct
         MASQUE path fails. Without it, podnet tries the relay: the TLS to the
         front door stays end to end in the WebSocket.
-    --masque-endpoint IP:PORT
-        The MASQUE front door (IP:PORT) in place of the one of the device.
+    --masque-endpoint ENDPOINT
+        The MASQUE front door (IP:PORT, HOST:PORT, or https://HOST[:PORT]) in
+        place of the one of the device.
     --masque-sni NAME
         The TLS name of the MASQUE front door in place of
         consumer-masque.cloudflareclient.com.
@@ -8028,8 +8045,9 @@ podnet warp nc
         Do not try the WebSocket relay (--relay, PODNET_RELAY) when the direct
         MASQUE path fails. Without it, podnet tries the relay: the TLS to the
         front door stays end to end in the WebSocket.
-    --masque-endpoint IP:PORT
-        The MASQUE front door (IP:PORT) in place of the one of the device.
+    --masque-endpoint ENDPOINT
+        The MASQUE front door (IP:PORT, HOST:PORT, or https://HOST[:PORT]) in
+        place of the one of the device.
     --masque-sni NAME
         The TLS name of the MASQUE front door in place of
         consumer-masque.cloudflareclient.com.
@@ -8186,8 +8204,9 @@ podnet warp ssh-config
         Do not try the WebSocket relay (--relay, PODNET_RELAY) when the direct
         MASQUE path fails. Without it, podnet tries the relay: the TLS to the
         front door stays end to end in the WebSocket.
-    --masque-endpoint IP:PORT
-        The MASQUE front door (IP:PORT) in place of the one of the device.
+    --masque-endpoint ENDPOINT
+        The MASQUE front door (IP:PORT, HOST:PORT, or https://HOST[:PORT]) in
+        place of the one of the device.
     --masque-sni NAME
         The TLS name of the MASQUE front door in place of
         consumer-masque.cloudflareclient.com.
@@ -8367,8 +8386,9 @@ podnet warp tun
         Do not try the WebSocket relay (--relay, PODNET_RELAY) when the direct
         MASQUE path fails. Without it, podnet tries the relay: the TLS to the
         front door stays end to end in the WebSocket.
-    --masque-endpoint IP:PORT
-        The MASQUE front door (IP:PORT) in place of the one of the device.
+    --masque-endpoint ENDPOINT
+        The MASQUE front door (IP:PORT, HOST:PORT, or https://HOST[:PORT]) in
+        place of the one of the device.
     --masque-sni NAME
         The TLS name of the MASQUE front door in place of
         consumer-masque.cloudflareclient.com.
@@ -8515,8 +8535,9 @@ podnet warp h3
         Do not try the WebSocket relay (--relay, PODNET_RELAY) when the direct
         MASQUE path fails. Without it, podnet tries the relay: the TLS to the
         front door stays end to end in the WebSocket.
-    --masque-endpoint IP:PORT
-        The MASQUE front door (IP:PORT) in place of the one of the device.
+    --masque-endpoint ENDPOINT
+        The MASQUE front door (IP:PORT, HOST:PORT, or https://HOST[:PORT]) in
+        place of the one of the device.
     --masque-sni NAME
         The TLS name of the MASQUE front door in place of
         consumer-masque.cloudflareclient.com.
@@ -8673,8 +8694,9 @@ podnet warp run
         Do not try the WebSocket relay (--relay, PODNET_RELAY) when the direct
         MASQUE path fails. Without it, podnet tries the relay: the TLS to the
         front door stays end to end in the WebSocket.
-    --masque-endpoint IP:PORT
-        The MASQUE front door (IP:PORT) in place of the one of the device.
+    --masque-endpoint ENDPOINT
+        The MASQUE front door (IP:PORT, HOST:PORT, or https://HOST[:PORT]) in
+        place of the one of the device.
     --masque-sni NAME
         The TLS name of the MASQUE front door in place of
         consumer-masque.cloudflareclient.com.
@@ -10990,6 +11012,9 @@ podnet link carriers
         icmp.
     --json
         Print one JSON document: {"carriers": [...]}.
+    --third-party
+        Include registered third-party roads with cost class and last-verified
+        date.
     --ca-file PATH
         A file of TLS roots (PEM). podnet uses only these roots for each
         connection that it opens as a client. Without it, podnet reads
@@ -17163,8 +17188,9 @@ others). It reads the variables `PODNET_WARP_API`, `PODNET_WARP_CC`, `PODNET_WAR
 * `warp status` prints `h3          h3-shape=SHAPE congestion=PROFILE control-stream=yes|no settings=yes|no`, and
   the JSON document has the same facts under `h3`, with `cid_rotation`. The status names two states apart (QUIC-5):
   `state       enrolment failed: ...` when the provider refuses or does not answer (exit 77 for a refusal, 69 for a
-  limit or no answer, 78 for a configuration), and `state       transport failed: ...` when the data path of a running
-  `warp up` does not answer (exit 69). An account with no instance has no state line.
+  limit or no answer, 78 for a configuration; JSON `"state": "enrolment failed"`, `"failure_kind": "enrolment"`), and
+  `state       transport failed: ...` when the data path of a running `warp up` does not answer (exit 69; JSON
+  `"state": "transport failed"`, `"failure_kind": "transport"`). An account with no instance has no state line.
 * `--cc none|reno|cubic` (a flag of `podnet warp`, before or after the subcommand; `PODNET_WARP_CC`): the congestion
   controller of the TCP connections of the userspace stack, for the data
   that it sends (an upload). The default is `none`: only the window of the
@@ -17335,11 +17361,11 @@ others). It reads the variables `PODNET_WARP_API`, `PODNET_WARP_CC`, `PODNET_WAR
   `https://tcp.ssh.relay.ajam.dev`, see [tunnels.md](tunnels.md), "Edge protocol and transport"). The
   client certificate and the pinned key stay end to end. The path that
   worked goes first at the next session. `--no-relay` turns this off.
-  `--masque-endpoint IP:PORT` and `--masque-sni NAME` replace the front
-  door and its TLS name. With no IPv4 default route, the IPv6 door of the device record goes
-  first. `podnet tunnel` takes `--masque-endpoint` too. `warp scan` prints the
+  `--masque-endpoint ENDPOINT` (`IP:PORT`, `[IPv6]:PORT`, `HOST:PORT`, or `https://HOST[:PORT]`) and `--masque-sni NAME`
+  replace the front door and its TLS name. With no IPv4 default route, the IPv6 door of the device record goes
+  first and no IPv4 socket attempt occurs (see [quic.md](quic.md)). `podnet tunnel` takes `--masque-endpoint` too. `warp scan` prints the
   first door that answers as a command: `podnet warp up --masque-endpoint IP:PORT`. The flag is an option of each
-  subcommand of `podnet warp` (for example `warp proxy`, `warp run`, `warp tun`, `warp probe`), not of `podnet warp`
+  subcommand of `podnet warp` (for example `warp proxy`, `warp run`, `warp tun`, `warp probe`, `warp status`), not of `podnet warp`
   alone.
 * `--resolver SPEC` (repeatable; `PODNET_WARP_RESOLVERS`): the resolver of the DNS inside the tunnel, in
   place of `1.1.1.1:53`. `SPEC` is `IP[:PORT]` (UDP) or `tls://IP[:PORT][#NAME]` (DNS over TLS, port 853;
@@ -17697,6 +17723,12 @@ line, because netstack mode has no DNS. The listener has no authentication:
 keep it on `127.0.0.1`. The doctor row sends a SOCKS5 greeting to the port
 (`NB_SOCKS5_LISTENER_PORT`, else 1080). A listener that does not answer is
 `unknown`, not a fault.
+
+On a host whose only egress is an HTTP `CONNECT` proxy, `netbird up -F`
+ignores `HTTP_PROXY` and `HTTPS_PROXY` (its gRPC dialer connects directly).
+Run `netbird up -F` inside `podnet pod -x http://PROXY` so management, signal
+and the WebSocket relay cross the proxy without root or a TUN device
+([report](reports/netbird-netstack-2026-11-27.md)).
 
 ## WireGuard: `wg:FILE`
 

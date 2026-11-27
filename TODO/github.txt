@@ -188,7 +188,7 @@
 483 issue closed
 484 issue closed
 485 issue closed
-486 issue open
+486 issue closed
 489 issue open
 491 issue closed
 493 issue closed
@@ -500,3 +500,5 @@
 799 issue open
 800 issue open
 801 issue open
+802 issue open
+803 issue open

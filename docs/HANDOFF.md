@@ -1,6 +1,6 @@
 # Handoff
 
-The product work state at 2026-11-27 17:20 (UTC). Start a hosted checkout with
+The product work state at 2026-11-27 21:15 (UTC). Start a hosted checkout with
 [TODO/RESUME.md](../TODO/RESUME.md). Remove this file when the lead session has no unfinished step.
 
 ## The goal
@@ -13,39 +13,52 @@ off the release).
 
 ## Where the code is
 
-* All finished work is on `main` (`3d04883` is the tag `v0.4.0-beta.21`). `ci` 46020756469 (all 13 jobs), `live`
-  46020756523, `gate` 46020756813, `deny` 46020756439, `secrets` 46020756442, `issue-sync` 46020756972,
-  `record-issues` 46025989718, dry run `release` 46027210279, publish `release` 46032920415 and `release-proofs`
-  46038872762 (`proofs` and both reproducible `rebuild` jobs) all passed.
-* The newest release is `v0.4.0-beta.21` (tag at `3d04883`; COORD-143 #801; manifest list digest
-  `sha256:7b07bc89c549d48bfeeaf28794e5186a5d8cd6d4978a63bae62fbf7a411534a5`).
-* Done in this session: all 13 findings of the QA pass of `v0.4.0-beta.21` (T-620 to T-632, GitHub #786 to #798 closed
-  via `issue-sync`), `T-621` follow-up fix for full unread stdout pipes in `exit --stdio` (`3d04883`, `live`
-  46015389946), `T-628` `need_loopback!()` guard (`86d1990`), `T-488` direct HTTP/2 and QUIC measurements plus
-  `cloudflared` source check, `COORD-142` (#800) to podcrates for four shared-crate follow-ups, and the release of
-  `v0.4.0-beta.21` (`COORD-143` #801, `COORD-139` #784 updated).
-* Remaining entries are all blocked behind `PodUtils/podcrates`, sibling projects, outside services, or the owner:
-  * **Blocked on `PodUtils/podcrates`:** T-137 (next tag after `v0.86.0`), T-114 and T-115 (COORD-130 #760, shared
-    headscale harness), T-123 and T-124 (no `pod-ts` crate), T-161 and T-200 (COORD-006 #413, `pod-relay`), T-219 and
-    T-220 (`pod-unit`, `pod-relay`), T-244 (COORD-136 #781, `pod-cloudflare` capture hook gaps), T-283 and T-284
-    (`pod-link`), T-295 (COORD-140 #785, `pod-egress` Trojan accept parser), T-316 (QUIC stand-in leg on
-    `pod-cloudflare`), T-406 and T-478 (COORD-098 #604, relay lost-socket reset), T-586 (`pod-link` p2p), T-614
-    (COORD-134 #779, `pod-proxy` TLS hop for process `https://` proxy), plus COORD-135 (#780), COORD-137 (#782),
-    COORD-138 (#783), COORD-141 (#799), COORD-142 (#800).
-  * **Waiting for a `live` warning or outside resource:** T-414 and T-415 (partial: wait for next `live` warning to
-    report `pod-warp` logs), T-488 (partial: direct measurements saw 0 HTTP 530s; 20-round WARP measurement waits to
-    avoid unnecessary WARP device registration).
-  * **Blocked on owner or external accounts/devices/captures:** T-001 (#89), T-002 (#140), T-003 (#149), T-004 (#151),
-    T-005 (#161), T-006 (#222), T-007 (#224), T-044, T-210 (#407, paid WARP+ device), T-221 (cfb ask, live step),
-    T-247 (NetBird account), T-367 (#486), T-368 (#489), T-374 (#497), T-375 (#498).
+* All finished work is on `main`. The newest release is `v0.4.0-beta.21` (tag at `3d04883`; COORD-143 #801; manifest
+  list digest `sha256:7b07bc89c549d48bfeeaf28794e5186a5d8cd6d4978a63bae62fbf7a411534a5`).
+* Done in this session after `v0.4.0-beta.21`:
+  * **T-367 (GitHub #486 closed):** provider-agnostic MASQUE client (`QUIC-1` to `QUIC-5`, `CONNECT-IP`,
+    `CONNECT-UDP`, WebTransport, `--masque-endpoint`, `MasqueEnrolment` with two providers, `IpPolicy::Ipv6Only`
+    zero-IPv4-attempt enforcement, `MasqueError::{Enrolment, Transport}` in `warp status`, `tests/quic_masque.rs`).
+  * **T-368 (GitHub #489, partial on COORD-145 #803):** all six third-party road and status capabilities in podnet
+    with zero hardcoded third-party hostnames (`src/roads/third_party/`, IRC/MQTT 3.1.1/Syncthing Relay v1 codecs
+    and stand-ins, `link carriers --third-party`, `WatchState::{Ok, Degraded, Stale}`, `front=` `< 1 s` probe,
+    `RoadClass::FallbackAdapter` never selected by default, deduplicated 7-class dependency counts and oldest
+    verified date in `podnet status`, `tests/third_party_roads.rs`). Upstream `pod-services` `irc` entry and
+    multi-vantage watch schedule asked in COORD-145 (#803).
+  * **T-221 (done):** `scripts/live-bench-compare.sh` (anonymous quick tunnels for both `podnet` and `cloudflared`
+    `2026.11.2`, SHA-256 verified, masked comparison table, `podnet bench --json`, 429/1015 skip) wired into
+    `.github/workflows/live.yml`.
+  * **T-247 (done):** live measurement of NetBird `v0.84.0` netstack mode against self-hosted `netbird-server` on a
+    strictly proxy-only host (`docs/reports/netbird-netstack-2026-11-27.md`, `docs/networks.md`), plus fix in
+    `crates/podnet-netns/src/upstream.rs` so `podnet pod -x netbird:[PORT]` and `--egress netbird:[PORT]` expand to
+    `127.0.0.1:PORT`.
+  * **T-414 & T-488 (blocked on COORD-144 #802):** reproduced T-414 idle MASQUE TCP RST gap 100% locally and ran
+    T-488 direct + `quic+warp` measurements plus `cloudflared` source check; handed both off to `podcrates` in
+    COORD-144 (#802). T-415 checked 5/5 live trials (`warp=on`, 0 resets).
+  * **T-001 (#89):** refreshed the living test guide on GitHub #89 to `v0.4.0-beta.21` (added `podnet link` +
+    `restricted-host`/`no-loopback` carrier table, `derp`, `send`/`receive`, `serve --acme`, `tunnel --inspect`,
+    `exit --stdio`, `ssh-relay`, `--network` specs, and T-247 NetBird note).
+* Remaining entries are all blocked behind `PodUtils/podcrates`, sibling projects, or the owner (accounts/licences/rulings):
+  * **Blocked on `PodUtils/podcrates` / relay:** T-137 (next tag after `v0.86.0`), T-114 and T-115 (COORD-130 #760,
+    shared headscale harness), T-123 and T-124 (no `pod-ts` crate), T-161 and T-200 (COORD-006 #413, `pod-relay`),
+    T-219 and T-220 (`pod-unit`, `pod-relay`), T-244 (COORD-136 #781, `pod-cloudflare` capture hook gaps), T-283 and
+    T-284 (`pod-link`), T-295 (COORD-140 #785, `pod-egress` Trojan accept parser), T-316 (QUIC stand-in leg on
+    `pod-cloudflare`), T-368 (COORD-145 #803, `pod-services` `irc` + multi-vantage watch), T-406 and T-478
+    (COORD-098 #604, relay lost-socket reset), T-414 and T-488 (COORD-144 #802, `pod-warp` idle reset &
+    `pod-cloudflare` quick-tunnel `ha_connections`), T-415 (partial: waits for any recurrence in `live`), T-586
+    (`pod-link` p2p), T-614 (COORD-134 #779, `pod-proxy` TLS hop for process `https://` proxy), T-044 (`podcrates`
+    / T-137), T-374 (#497, relay operator + owner), T-375 (#498, `pod-session` + owner).
+  * **Blocked on owner rulings / accounts / licences / captures:** T-001 (#89), T-002 (#140, L4 capture), T-003
+    (#149, Zero Trust team token capture), T-004 (#151, ECH HPKE ruling), T-005 (#161), T-006 (#222), T-007 (#224),
+    T-210 (#407, paid WARP+ device).
 
 ## The next steps, in order
 
 1. **Each new tag of `PodUtils/podcrates` (> `v0.86.0`):** take it (T-137), close the COORD issues that it answers, and
-   unblock the entries above (such as T-614, T-295, T-244, T-114/T-115, T-123/T-124, T-406/T-478).
+   unblock the entries above (such as T-614, T-295, T-244, T-114/T-115, T-123/T-124, T-368, T-414/T-488, T-406/T-478).
 2. **Each new ask of `podrunner` (or `cfb` / `githome`):** handle before other podnet work (`docs/decisions.md`,
    2026-11-18, podrunner first).
-3. **Any red run of `ci` or `live`:** triage; capture T-414 or T-415 warnings if they fire in `live`.
+3. **Any red run of `ci` or `live`:** triage; capture T-415 warnings if they fire in `live`.
 4. **Next beta (`v0.4.0-beta.22`):** after a new green batch, run the black-box QA pass (`scripts/agent/qa-pass.md`)
    first (`docs/maintenance.md`, Release, step 0).
 
@@ -70,6 +83,8 @@ off the release).
 
 | Issue | Waits for |
 | --- | --- |
+| `#803` (COORD-145, `pod-services` `irc` road entry & multi-vantage watch for T-368) | A tag of podcrates (T-368). |
+| `#802` (COORD-144, `pod-warp` idle MASQUE reset detection & `pod-cloudflare` quick-tunnel `ha_connections`) | A tag of podcrates (T-414, T-488). |
 | `#801` (COORD-143, hand-off of `v0.4.0-beta.21`) | The other sessions read it; then close through the record. |
 | `#800` (COORD-142, QA beta.21 follow-ups in `pod-proxy`, `pod-derp`, `pod-core`, `pod-warp`) | A tag of podcrates with the fixes. |
 | `#799` (COORD-141, Gemini / Antigravity Cloud role table and startup flags) | podcrates adds the column to its shared `docs/hosted-sessions.md` table. |

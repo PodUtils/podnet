@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**631 entries: 0 open, 8 partial, 28 blocked, 595 done.**
+**631 entries: 0 open, 6 partial, 27 blocked, 598 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 3 | 95 | 99 |
-| P2 | 0 | 3 | 11 | 309 | 323 |
-| P3 | 0 | 4 | 14 | 190 | 208 |
-| **All** | 0 | 8 | 28 | 595 | 631 |
+| P2 | 0 | 2 | 11 | 310 | 323 |
+| P3 | 0 | 3 | 13 | 192 | 208 |
+| **All** | 0 | 6 | 27 | 598 | 631 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -266,7 +266,7 @@ M8 Overlays, M9 Later.
 | [T-218](rename.md) | P0 | M | M1 | release | done | A connector profile that holds within a minor version (PodUtils/podcrates#35, A-N-05) |
 | [T-219](services.md) | P1 | M | M6 | feature | blocked | `podnet service install`: a hardened system unit (PodUtils/podcrates#35, A-N-11) |
 | [T-220](services.md) | P1 | S | M6 | feature | blocked | `relay node` as a system service, with no operator act (PodUtils/podcrates#35, A-N-12) |
-| [T-221](services.md) | P2 | M | M6 | feature | blocked | `podnet bench URL --json` (PodUtils/podcrates#35, A-N-15) |
+| [T-221](services.md) | P2 | M | M6 | feature | done | `podnet bench URL --json` (PodUtils/podcrates#35, A-N-15) |
 | [T-222](fixes.md) | P2 | S | M5 | feature | done | `llms.txt`, `llms-full.txt` and `--help --json` (PodUtils/podcrates#35, A-X-19) |
 | [T-223](fixes.md) | P3 | M | M5 | defect | done | seccomp: the TCP gaps that the differential check finds |
 | [T-224](crates.md) | P1 | S | M3 | chore | done | podnet-netns calls `pod_proxy::udp` for the SOCKS5 datagram path |
@@ -292,7 +292,7 @@ M8 Overlays, M9 Later.
 | [T-244](later.md) | P3 | L | M9 | feature | partial | `tunnel --inspect`: capture each exchange beside the copy helpers of `forward_http`, keep a ring, redact by default, replay over a 0600 socket (GitHub #435) |
 | [T-245](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.4`: the dry run, the publish and the release proofs |
 | [T-246](overlays.md) | P3 | S | M8 | feature | done | NetBird: the network spec `netbird:[PORT]` over the SOCKS5 listener of netstack mode |
-| [T-247](overlays.md) | P3 | M | M8 | measurement | blocked | NetBird: measure netstack mode on a proxy-only host |
+| [T-247](overlays.md) | P3 | M | M8 | measurement | done | NetBird: measure netstack mode on a proxy-only host |
 | [T-248](later.md) | P3 | L | M9 | feature | done | Router: a guest-wire router that ends guest TCP on smoltcp |
 | [T-249](pods.md) | P2 | M | M7 | chore | done | netns: the router of the namespace runs on the interface of `pod-netstack` |
 | [T-250](pods.md) | P2 | S | M7 | chore | done | CI: a root step that runs the netns tests that skip on a runner |
@@ -411,8 +411,8 @@ M8 Overlays, M9 Later.
 | [T-364](fixes.md) | P3 | S | M5 | measurement | done | live: two runs in a row failed at the quick tunnel; the rerun passed (GitHub #516) |
 | [T-365](deferred.md) | P3 | L | M9 | feature | done | Deferred: carry a session in NTPv4 extension fields, SMTP and IMAP (GitHub #484) |
 | [T-366](deferred.md) | P3 | L | M9 | feature | done | Deferred: carry a session through a TURN allocation, with RFC 6062 (GitHub #485) |
-| [T-367](deferred.md) | P3 | L | M9 | feature | partial | Deferred: close four QUIC gaps: MASQUE enrolment, HTTP/3 shape, version, connection ID (GitHub #486) |
-| [T-368](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: register third-party services as roads, with a watch, a date and a count (GitHub #489) |
+| [T-367](deferred.md) | P3 | L | M9 | feature | done | Deferred: close four QUIC gaps: MASQUE enrolment, HTTP/3 shape, version, connection ID (GitHub #486) |
+| [T-368](deferred.md) | P3 | L | M9 | feature | partial | Deferred: register third-party services as roads, with a watch, a date and a count (GitHub #489) |
 | [T-369](deferred.md) | P3 | L | M9 | feature | done | Deferred: switch after a real handshake, with a cover script and multiplexed cover (GitHub #491) |
 | [T-370](deferred.md) | P3 | L | M9 | feature | done | Deferred: shape the record layer: padding profiles, entropy, first flight, pacing (GitHub #493) |
 | [T-371](deferred.md) | P3 | L | M9 | feature | done | Deferred: shape the application: deferred responses, a generator, carriers in the payload (GitHub #494) |
@@ -458,7 +458,7 @@ M8 Overlays, M9 Later.
 | [T-411](fixes.md) | P2 | S | M5 | defect | done | live: speed.cloudflare.com answers HTTP 429 to the shared address of WARP, and the rate check fails |
 | [T-412](crates.md) | P1 | S | M3 | chore | done | Take podcrates v0.66.0 |
 | [T-413](fixes.md) | P2 | S | M5 | defect | done | live: warp scan gets no answer from a front door once, and the step fails |
-| [T-414](fixes.md) | P2 | S | M5 | defect | partial | live: after a kill of its MASQUE connection, the WARP proxy opens no new session in 60 s |
+| [T-414](fixes.md) | P2 | S | M5 | defect | blocked | live: after a kill of its MASQUE connection, the WARP proxy opens no new session in 60 s |
 | [T-415](fixes.md) | P2 | S | M5 | defect | partial | live: the first request through the WARP proxy gets a reset 5 s after the start |
 | [T-416](crates.md) | P1 | S | M3 | chore | done | Take podcrates v0.67.0 |
 | [T-417](crates.md) | P2 | S | M3 | chore | done | One durable replace of a private file: podnet's copies call `pod_core::files::replace_private` |
@@ -532,7 +532,7 @@ M8 Overlays, M9 Later.
 | [T-485](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.72.0 |
 | [T-486](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.73.0 |
 | [T-487](fixes.md) | P1 | S | M5 | release | done | The image on ghcr.io: an attestation of its provenance, and its digests in the release notes |
-| [T-488](fixes.md) | P3 | S | M5 | research | partial | A quick tunnel with two edge connections gets HTTP 530 for some requests |
+| [T-488](fixes.md) | P3 | S | M5 | research | blocked | A quick tunnel with two edge connections gets HTTP 530 for some requests |
 | [T-489](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.74.0 |
 | [T-490](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.75.0 |
 | [T-491](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.76.0 |

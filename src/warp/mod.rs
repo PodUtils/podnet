@@ -263,7 +263,7 @@ pub struct MasqueOptions {
     pub no_relay: bool,
     /// The front door in place of the one of the device record.
     pub endpoint: Option<SocketAddr>,
-    /// The parsed `--masque-endpoint` (IP:PORT, HOST:PORT, or https://HOST[:PORT]).
+    /// The parsed `--masque-endpoint` (`IP:PORT`, `HOST:PORT`, or `https://HOST[:PORT]`).
     pub target: Option<masque::MasqueEndpoint>,
     /// The TLS name in place of `consumer-masque.cloudflareclient.com`.
     pub sni: Option<String>,

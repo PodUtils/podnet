@@ -2324,7 +2324,7 @@ T-219 (`pod-unit`), T-161 and T-087 (`pod-relay`, PodUtils/podcrates). The entry
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -2349,12 +2349,6 @@ cargo test -p podnet --test commands -- bench_json_has_the_fixed_keys
 cargo todo check
 ```
 
-## Blocker
-
-The owner, 2026-11-11 (`docs/decisions.md`, Deferred and blocked work): steps 1 to 3 are done (861ebc4); step 4, the
-live step with `cloudflared` on one runner, needs a Cloudflare test account. A local server cannot stand
-in for the edge.
-
 ## Start condition
 
 For the live step only: a Cloudflare test account exists (`docs/decisions.md`, 2026-11-09, Test accounts). The local part can start now.
@@ -2371,6 +2365,18 @@ document has the keys `schema`, `podnet`, `url`, `connections`, `duration_s`, `r
 `bench_json_has_the_fixed_keys` and `bench_counts_http_errors` (`tests/commands.rs`) test it against
 `podnet serve --local`. Not done: step 4, the live step in `live.yml` with `cloudflared` on one runner. It waits
 for the Cloudflare test account. The keys are not in `docs/protocol.md` (the entry does not ask for it).
+
+## Done
+
+2026-11-27, commit `c1b97a2` (step 4). Neither `podnet tunnel --url` nor `cloudflared tunnel --url` needs a
+Cloudflare account: both open anonymous `trycloudflare.com` quick tunnels against the same local
+`scripts/origin-sink.py` origin. Added `scripts/live-bench-compare.sh` (verifies `cloudflared` `2026.11.2`
+SHA-256 `56f13335143ec0e22772963290683a84a04114a35ec64cbc794a4d39ff9bb8cf`, masks `*.trycloudflare.com` hosts,
+runs `podnet bench --json` against each tunnel, validates `schema == 1`, `requests > 0`, `errors == 0`, and
+skips with `::warning::` on HTTP 429 / error 1015 quota per T-589) and wired it into `.github/workflows/live.yml`
+(`Benchmark comparison, podnet vs cloudflared`). Verified with `shellcheck -s sh`, `python3 scripts/check-workflows.py`
+(0 faults), and live execution on this VM (both quick tunnels opened and benchmarked side by side; quota warning
+path verified live after Cloudflare per-IP 1015).
 
 # T-236: `serve --ingress relay --detach` and `git serve --ingress relay --detach` report ready before the node is connected
 

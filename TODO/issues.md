@@ -181,8 +181,8 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #483 | live: two runs in a row failed | closed | T-315 |
 | #484 | [DEFERRED] Carry a session in NTPv4 extension fields, SMTP and IMAP | closed (consolidated onto `main` with `podcrates` `v0.82.0`; T-365 done) | T-365 |
 | #485 | [DEFERRED] Carry a session through a TURN allocation, with RFC 6062 | closed (consolidated onto `main` with `podcrates` `v0.82.0`; T-366 done) | T-366 |
-| #486 | [DEFERRED] Close four QUIC gaps: MASQUE enrolment, HTTP/3 shape, version, connection ID | open (T-367 partial: HTTP/3 shape, TUIC, Juicity, rotation done; MASQUE QUIC-1 to QUIC-5 remain) | T-367 |
-| #489 | [DEFERRED] Register third-party services as roads, with a watch, a date and a count | open (deferred by the owner, 2026-11-12: T-368 blocked on outside endpoints) | T-368 |
+| #486 | [DEFERRED] Close four QUIC gaps: MASQUE enrolment, HTTP/3 shape, version, connection ID | closed (HTTP/3 shape, TUIC, Juicity, rotation, and MASQUE QUIC-1 to QUIC-5 on `main` `219b244`; T-367 done) | T-367 |
+| #489 | [DEFERRED] Register third-party services as roads, with a watch, a date and a count | open (T-368 partial: all six podnet capabilities landed in `8818d27`; pod-services irc + multi-vantage watch asked in COORD-145 #803) | T-368 |
 | #491 | [DEFERRED] Switch after a real handshake, with a cover script and multiplexed cover | closed (consolidated onto `main` with `pod-cover` `v0.82.0`; T-369 done) | T-369 |
 | #493 | [DEFERRED] Shape the record layer: padding profiles, entropy, first flight, pacing | closed (consolidated onto `main` with `pod-shape` `v0.82.0`; T-370 done) | T-370 |
 | #494 | [DEFERRED] Shape the application: deferred responses, a generator, carriers in the payload | closed (consolidated onto `main`; T-371 done) | T-371 |
@@ -486,5 +486,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #799 | COORD-141: hosted-sessions role table and startup flags for Gemini / Antigravity Cloud (to podcrates) | open (a COORD issue between sessions) | none |
 | #800 | COORD-142: QA beta.21 follow-ups for pod-proxy, pod-derp, pod-core and pod-warp (to podcrates) | open (a COORD issue between sessions; the upstream asks of T-623, T-625, T-626 and T-630) | none |
 | #801 | COORD-143: podnet v0.4.0-beta.21 is out: the files, their SHA-256 and the image by digest (to all) | open (a COORD issue between sessions) | none |
+| #802 | COORD-144: pod-warp idle MASQUE reset detection (T-414) and quick-tunnel ha_connections default (T-488) (to podcrates) | open (a COORD issue between sessions; the upstream asks of T-414 and T-488) | none |
+| #803 | COORD-145: pod-services irc road entry and multi-vantage watch schedule for third-party roads (T-368, #489) (to podcrates) | open (a COORD issue between sessions; the upstream asks of T-368) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556, #557 and #680 to #684 are closed; they are pull requests.

@@ -238,8 +238,7 @@ mod tests {
         let err = udp
             .datagrams("127.0.0.1:443".parse().unwrap())
             .await
-            .err()
-            .expect("IPv4 target must fail under Ipv6Only");
+            .expect_err("IPv4 target must fail under Ipv6Only");
         assert_eq!(err.class, Class::Unavailable);
         assert!(tracker.ipv4_attempts().is_empty());
         assert_eq!(tracker.refused_ipv4().len(), 1);

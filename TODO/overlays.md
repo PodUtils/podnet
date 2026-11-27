@@ -573,7 +573,7 @@ section "NetBird in netstack mode" (limits: TCP only, IP addresses only, no auth
 **Milestone:** M8
 **Priority:** P3
 **Effort:** M
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -596,13 +596,27 @@ no root (`netbird up -F`), and carries a TCP flow through its SOCKS5 listener on
 sh scripts/agent/check.sh
 ```
 
-## Blocker
-
-No NetBird account or setup key exists for the tests. The owner gives one, or the entry stays blocked.
-
 ## Start condition
 
 T-246 is done, and a NetBird setup key is a secret of the live job.
+
+## Done
+
+2026-11-27, commit `28948f1`. Measured NetBird `v0.84.0` in netstack mode (`NB_USE_NETSTACK_MODE=true`) against a
+self-hosted `ghcr.io/netbirdio/netbird-server:latest` (`v0.84.0`, management, signal and WebSocket relay on an
+isolated Docker bridge `172.29.0.10:18080`, STUN off), with both peers running as non-root with no TUN device
+(`docs/reports/netbird-netstack-2026-11-27.md`, `docs/networks.md`).
+
+- Bare `HTTP_PROXY` / `HTTPS_PROXY` failed in a route-less network namespace: `netbird up -F` dials gRPC via
+  `nbnet.NewDialer().DialContext`, sending zero requests to the proxy and exiting with `network is unreachable`.
+- Wrapping `netbird up -F` in `podnet pod -x http://PROXY` (against a `CONNECT`-only proxy allowing only
+  `172.29.0.10:18080`) succeeded end to end: management gRPC, signal gRPC and the WebSocket relay
+  (`rel://172.29.0.10:18080`) crossed `CONNECT`, `podnet net doctor` reported `ok`, `podnet forward --network netbird:11082`
+  read Peer A's SSH banner 3/3 times (18.4 to 19.7 ms), `podnet --egress netbird:11082 pod` read it in 30.8 ms,
+  and a peer name was refused at once with one line.
+- Fixed `crates/podnet-netns/src/upstream.rs` (`Proxy::parse`) so `podnet pod -x netbird:[PORT]` and
+  `podnet pod --egress netbird:[PORT]` expand to `127.0.0.1:PORT` (`netbird_spec_parses_to_loopback_socks5`,
+  1 passed).
 
 # T-337: WireGuard: take the preshared key of `pod-wg`
 

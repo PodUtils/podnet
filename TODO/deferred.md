@@ -77,6 +77,8 @@ checked against the help of the binary of 0.4.0-beta.4. The old tracking list st
 done). The entry stays blocked: #89 stays open as the guide of the owner.
 
 2026-11-12, GitHub #475 asks that a row which cannot run on a platform is named in the guide of #89, and GitHub #467 names the CI jobs `restricted-host` and `no-loopback` for the carriers that run there (T-274, T-275). Add the link rows to the guide when the link commands exist (T-265).
+
+2026-11-27: refreshed GitHub #89 to `v0.4.0-beta.21`: added `podnet link` and the `restricted-host` / `no-loopback` carrier table, `derp`, `send`/`receive`, `serve --acme`, `tunnel --inspect`, `exit --stdio`, `ssh-relay`, all `--network` egress specs, and the T-247 proxy-only NetBird note (removed NetBird from the untested list). Each command checked against `./target/debug/podnet --help`. The entry stays blocked because #89 stays open as the owner's guide.
 # T-002: `warp proxy --l4`: the L4 door answers 403 to each form of the CONNECT (GitHub #140)
 
 **Source:** GitHub #140.
@@ -569,7 +571,7 @@ TURN allocation (RFC 8656 and RFC 6062 TCP relay both ways) and NAT traversal wi
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -613,11 +615,25 @@ entry.
 ## Prove
 
 ```sh
-cargo test -p podnet --test quic_qlog --test quic_tuic --test quic_tuic_cli --test quic_juicity --test quic_rotation
+cargo test -p podnet --test quic_qlog --test quic_tuic --test quic_tuic_cli --test quic_juicity --test quic_rotation --test quic_masque
 cargo todo check
 ```
 
-The seven QUIC shape, TUIC, Juicity, and rotation gates pass; MASQUE `QUIC-1` to `QUIC-5` remain.
+## Done
+
+2026-11-27, commit `219b244`. Closed the final gap of GitHub #486 (MASQUE `QUIC-1` to `QUIC-5`) on the existing
+`pod-quic` (`noq`) and `pod-warp::h3` stack with no new dependencies:
+
+- `src/warp/masque/` (`mod.rs`, `client.rs`, `session.rs`, `enrol.rs`, `family.rs`, `error.rs`, `standin.rs`):
+  provider-agnostic MASQUE client carrying `CONNECT-IP` (RFC 9484), `CONNECT-UDP` (RFC 9298) and WebTransport
+  over one QUIC stack; `MasqueEnrolment` trait with two providers (`WarpEnrolment` and `TokenEnrolment` /
+  `EndpointEnrolment`); `--masque-endpoint <IP:PORT|[IPv6]:PORT|HOST:PORT|https://HOST[:PORT]>` wired into
+  `src/warp/mod.rs` and `src/cli/cmd/warp/`; `IpPolicy::Ipv6Only` enforcing `[::]:0` bind and zero IPv4 socket
+  attempts; `MasqueError::{Enrolment, Transport}` surfaced in `warp status` and `warp status --json`; docs in
+  `docs/quic.md` and `docs/warp.md`.
+- Tests: `warp::masque` (8 passed) and `tests/quic_masque.rs` (6 passed, all guarded with `need_loopback!()`,
+  covering `CONNECT-IP`, `CONNECT-UDP` echo, WebTransport, IPv6-only `[::1]` zero-IPv4-attempt, second
+  provider enrolment, and enrolment vs transport failure reporting).
 
 
 # T-368: Deferred: register third-party services as roads, with a watch, a date and a count (GitHub #489)
@@ -627,7 +643,7 @@ The seven QUIC shape, TUIC, Juicity, and rotation gates pass; MASQUE `QUIC-1` to
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** blocked
+**Status:** partial
 
 ## Problem
 
@@ -669,16 +685,21 @@ entry.
 ## Prove
 
 ```sh
-grep -l 'GitHub #489' TODO/*.md
+cargo test -p podnet --test third_party_roads
 cargo todo check
 ```
 
-Each row of the table of the issue has an entry, and the check passes.
+## Correction
 
-## Blocker
-
-The owner deferred the issue on 2026-11-12 (`TODO/issues.md`). Who acts:
-the owner. What unblocks it: the owner lifts the deferral and supplies live third-party road endpoints (IRC, MQTT, Syncthing relay, fronted CDN) per the H-27 split (`docs/research/podnet/hard-problems-results.md`).
+2026-11-27, commit `8818d27`: implemented all six capabilities of GitHub #489 in podnet with zero hardcoded
+third-party hostnames (`src/roads/third_party/{mod,irc,mqtt,syncthing,watch,front,fallback}.rs`,
+`src/carriers.rs`, `src/cli/cmd/link/mod.rs`, `src/status.rs`, `docs/link.md`, `tests/third_party_roads.rs`,
+9 passed): IRC, MQTT 3.1.1 and Syncthing Relay v1 codecs with loopback stand-ins, `podnet link carriers --third-party`
+(cost class and last-verified date from `pod-services`), non-panicking `WatchState::{Ok, Degraded, Stale}`,
+`front=` health probe clamped to `<= 1 s`, `RoadClass::FallbackAdapter` never selected by default, and
+deduplicated 7-class dependency counts plus oldest verified date in `podnet status`. What stays: upstream
+`pod-services` `irc` entry and multi-vantage scheduled watch runs asked in COORD-145 (PodUtils/podnet#803,
+to podcrates).
 
 
 # T-369: Deferred: switch after a real handshake, with a cover script and multiplexed cover (GitHub #491)
