@@ -163,3 +163,44 @@ fn exit_without_flag_serves_stdio() {
         String::from_utf8_lossy(&out.stderr)
     );
 }
+
+/// T-621 (live 46015389946): when the client reads only the first line, leaves
+/// stdout open and unread while the target fills the stdout pipe (>64 KiB), and
+/// closes stdin, `podnet exit --stdio` still ends with status 0 instead of
+/// hanging in `write(1)` or runtime shutdown.
+#[test]
+fn exit_stdio_ends_when_stdin_closes_with_full_stdout_pipe() {
+    test_host::need_loopback!();
+    let srv = TcpListener::bind("127.0.0.1:0").unwrap();
+    let to = v4(srv.local_addr().unwrap());
+    std::thread::spawn(move || {
+        if let Ok((mut s, _)) = srv.accept() {
+            let mut buf = [0u8; 256];
+            let _ = s.read(&mut buf);
+            let mut body = b"HTTP/1.1 200 OK\r\n\r\n".to_vec();
+            body.resize(body.len() + 512 * 1024, b'x');
+            let _ = s.write_all(&body);
+        }
+    });
+
+    let mut exit = Exit::start();
+    let reply = exit.open(1, Some(to));
+    assert_eq!(&reply[..2], &[5, 0], "{reply:?}");
+    exit.send(b"GET / HTTP/1.1\r\n\r\n");
+    assert_eq!(exit.read(17), b"HTTP/1.1 200 OK\r\n");
+
+    // Close stdin while keeping stdout open and unread.
+    exit.stdin = None;
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    loop {
+        if let Some(status) = exit.child.try_wait().unwrap() {
+            assert_eq!(status.code(), Some(0), "{status:?}");
+            break;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "podnet exit --stdio hung after stdin closed with full stdout pipe"
+        );
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+}

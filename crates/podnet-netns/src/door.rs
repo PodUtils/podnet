@@ -494,11 +494,15 @@ where
     let u_to_c = async {
         let mut buf = vec![0u8; RELAY_BUFFER];
         let mut draining = false;
+        let mut timed_out = false;
         loop {
             let read = if draining {
                 match tokio::time::timeout(drain, ur.read(&mut buf)).await {
                     Ok(res) => res,
-                    Err(_) => break,
+                    Err(_) => {
+                        timed_out = true;
+                        break;
+                    }
                 }
             } else {
                 tokio::select! {
@@ -509,17 +513,44 @@ where
                     }
                 }
             };
-            match read {
+            let n = match read {
                 Ok(0) | Err(_) => break,
-                Ok(n) => {
-                    if cw.write_all(&buf[..n]).await.is_err() {
+                Ok(n) => n,
+            };
+            let mut written = 0;
+            while written < n {
+                let step = if draining {
+                    match tokio::time::timeout(drain, cw.write(&buf[written..n])).await {
+                        Ok(res) => res,
+                        Err(_) => {
+                            timed_out = true;
+                            break;
+                        }
+                    }
+                } else {
+                    tokio::select! {
+                        res = cw.write(&buf[written..n]) => res,
+                        _ = &mut eof_rx => {
+                            draining = true;
+                            continue;
+                        }
+                    }
+                };
+                match step {
+                    Ok(0) | Err(_) => {
                         break;
                     }
+                    Ok(k) => written += k,
                 }
             }
+            if timed_out || written < n {
+                break;
+            }
         }
-        let _ = cw.flush().await;
-        let _ = cw.shutdown().await;
+        if !timed_out {
+            let _ = tokio::time::timeout(drain, cw.flush()).await;
+            let _ = tokio::time::timeout(drain, cw.shutdown()).await;
+        }
     };
 
     tokio::join!(c_to_u, u_to_c);

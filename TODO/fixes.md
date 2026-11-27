@@ -13822,7 +13822,7 @@ document or the door is wrong.
 
 ## Premise
 
-- Read: `socks_code` (`crates/podnet-netns/src/door.rs:541`) gives `0x02` for `Class::Policy`, `0x04` for
+- Read: `socks_code` (`crates/podnet-netns/src/door.rs:572`) gives `0x02` for `Class::Policy`, `0x04` for
   `Class::Timeout`, and for the rest `socks5_code_for_error(&e.to_string())`
   (`crates/podnet-netns/src/socks.rs:156`): `0x04` when the text holds "denied", "acl" or "refused", else `0x01`.
 - Read: `e.to_string()` of a `pod_core::Failure` is its own text, with no cause (`Failure` has `text()` and
