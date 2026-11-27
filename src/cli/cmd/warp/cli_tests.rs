@@ -174,3 +174,74 @@ fn the_tuic_link_of_nc() {
     }
     assert!(podnet::roads::tuic::Link::parse("tuic://h:443").is_err());
 }
+
+// T-631: each rule kind accepted by the warp proxy rule parser appears in
+// `warp proxy --rule` help and in docs/warp.md.
+#[test]
+fn the_help_names_each_rule_kind() {
+    use clap::CommandFactory as _;
+    use podnet::warp::rules::RuleMatch;
+
+    let err = RuleMatch::parse("foo:bar").unwrap_err().to_string();
+    let list = err
+        .split('(')
+        .nth(1)
+        .and_then(|s| s.split(')').next())
+        .expect("parser error lists rule kinds in parentheses");
+    let kinds: Vec<&str> = list.split(',').map(str::trim).collect();
+    assert!(
+        kinds.len() >= 4,
+        "expected at least 4 rule kinds from parser, got {kinds:?}"
+    );
+
+    let examples = [
+        ("domain", "domain:example.com"),
+        ("cidr", "cidr:10.0.0.0/8"),
+        ("port", "port:22"),
+        ("tcp", "tcp:1.2.3.4:5"),
+    ];
+    for (kind, sample) in examples {
+        assert!(
+            kinds.contains(&kind),
+            "parser list {kinds:?} missing {kind}"
+        );
+        assert!(
+            RuleMatch::parse(sample).is_ok(),
+            "parser must accept {sample}"
+        );
+    }
+
+    let cmd = Cli::command();
+    let warp = cmd.find_subcommand("warp").expect("warp subcommand");
+    let proxy = warp
+        .find_subcommand("proxy")
+        .expect("warp proxy subcommand");
+    let rule_arg = proxy
+        .get_arguments()
+        .find(|a| a.get_long() == Some("rule"))
+        .expect("warp proxy --rule argument");
+    let help = rule_arg
+        .get_long_help()
+        .or_else(|| rule_arg.get_help())
+        .expect("help text for --rule")
+        .to_string();
+
+    let doc = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/docs/warp.md"))
+        .expect("read docs/warp.md");
+    let rules_section = doc
+        .split("Rules of `warp proxy`")
+        .nth(1)
+        .and_then(|s| s.split("## Run a program").next())
+        .expect("docs/warp.md has Rules of warp proxy section");
+
+    for kind in &kinds {
+        assert!(
+            help.contains(kind),
+            "warp proxy --rule help does not name rule kind {kind:?}: {help}"
+        );
+        assert!(
+            rules_section.contains(&format!("`{kind}`")),
+            "docs/warp.md does not name rule kind `{kind}`"
+        );
+    }
+}

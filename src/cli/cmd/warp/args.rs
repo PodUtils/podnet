@@ -348,11 +348,15 @@ pub(crate) enum WarpCommand {
             requires = "proxy_user"
         )]
         proxy_password_file: Option<PathBuf>,
-        /// A rule for the destinations: KIND:VALUE=ACTION. KIND is domain or
-        /// cidr. domain takes NAME, or .NAME for the name and the names under
-        /// it. cidr takes ADDR/PREFIX (IPv4 or IPv6), or @FILE with one prefix
-        /// on each line. ACTION is tunnel, direct (from the host, with no
-        /// proxy) or reject. The first rule that matches wins. Repeatable.
+        /// A rule for the destinations: KIND:VALUE=ACTION. KIND is domain,
+        /// cidr, port or tcp. domain takes NAME, or .NAME for the name and
+        /// each name under it. cidr takes ADDR/PREFIX (IPv4 or IPv6), or
+        /// @FILE with one prefix on each line. port takes N or N-M and
+        /// matches these TCP ports of each host. tcp takes HOST:PORT (a name,
+        /// an IPv4 address or [IPv6]) and matches one host and one TCP port
+        /// (a name matches the same name only: no lookup). ACTION is tunnel,
+        /// direct (from the host, with no proxy) or reject. The first rule
+        /// that matches wins. Repeatable.
         #[arg(
             short = 'r',
             long = "rule",

@@ -170,22 +170,27 @@ others). It reads the variables `PODNET_WARP_API`, `PODNET_WARP_CC`, `PODNET_WAR
   listeners use `--identity`. One file is for one listener only. The ready
   document lists the listeners and their devices in `identities`.
 * Rules of `warp proxy` (`-r KIND:VALUE=ACTION`, repeatable): KIND is
-  `domain` (`NAME`, or `.NAME` for the name and the names under it) or
-  `cidr` (`ADDR/PREFIX`, IPv4 or IPv6, or `@FILE` with one prefix on each
-  line, for example the prefixes of a country). ACTION is `tunnel`,
-  `direct` (from the host, with the resolver of the host and no proxy) or
-  `reject` (SOCKS5 reply 0x02, HTTP 403). The first rule that matches wins.
-  A name that no domain rule matches is resolved through the tunnel when a
-  cidr rule exists. Then a loopback, a link-local or an unspecified address
-  and `localhost` are refused, then `--rule-default` (`tunnel`) applies.
-  `--rules-file FILE` adds the rules of FILE (one on each line, `#` starts a
-  comment); podnet reads it again when it changes and keeps the rules before
-  when it has an error. `--check` prints the rules and exits. An earlier
-  rule that matches each target of a later rule of another action shadows
-  it: podnet gives a warning. A shadowed `reject` rule is an error (exit
-  64). `--allow-shadowed-rules` makes it a warning. The rules
-  apply to TCP; UDP goes through the tunnel. The health line counts the
-  decisions.
+  `domain`, `cidr`, `port` or `tcp`. `domain` takes `NAME`, or `.NAME` for
+  the name and each name under it. `cidr` takes `ADDR/PREFIX` (IPv4 or
+  IPv6), or `@FILE` with one prefix on each line (for example the prefixes
+  of a country). `port` takes `N` or `N-M` (1 to 65535) and matches these
+  TCP ports of each host. `tcp` takes `HOST:PORT` (a name, an IPv4 address
+  or `[IPv6]`) and matches one host and one TCP port; a name matches the
+  same name only (no lookup). ACTION is `tunnel`, `direct` (from the host,
+  with the resolver of the host and no proxy) or `reject` (SOCKS5 reply
+  0x02, HTTP 403). The first rule that matches wins. A name matches the
+  `domain`, `port` and name `tcp` rules first; when none matches and a
+  `cidr` rule or an address `tcp` rule exists, the name is resolved through
+  the tunnel and its addresses match the rules. Then a loopback, a
+  link-local or an unspecified address and `localhost` are refused, then
+  `--rule-default` (`tunnel`) applies. `--rules-file FILE` adds the rules
+  of FILE (one on each line, `#` starts a comment); podnet reads it again
+  when it changes and keeps the rules before when it has an error.
+  `--check` prints the rules and exits. An earlier rule that matches each
+  target of a later rule of another action shadows it: podnet gives a
+  warning. A shadowed `reject` rule is an error (exit 64).
+  `--allow-shadowed-rules` makes it a warning. The rules apply to TCP; UDP
+  goes through the tunnel. The health line counts the decisions.
 
   ```sh
   podnet warp proxy -r domain:.corp.example=direct -r cidr:10.0.0.0/8=direct \
