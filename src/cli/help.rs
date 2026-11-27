@@ -172,9 +172,9 @@ fn with_examples(cmd: clap::Command, path: &str, root: &clap::Command) -> clap::
     cmd.after_help(text)
 }
 
-/// The lines after a usage error (E8, E10): a word that is no command but
+/// The lines after a usage error (E8, T-620): a word that is no command but
 /// looks like a port, a URL or a path names the command for it; an unknown
-/// command or flag names the version and `podnet update --check`.
+/// command or flag with no clap suggestion points to `podnet --help`.
 pub(crate) fn usage_hints(err: &clap::Error) -> Vec<String> {
     use clap::error::{ContextKind, ContextValue, ErrorKind};
     let invalid = || match err
@@ -189,6 +189,10 @@ pub(crate) fn usage_hints(err: &clap::Error) -> Vec<String> {
         ErrorKind::InvalidSubcommand => {
             if let Some(hint) = invalid().as_deref().and_then(word_hint) {
                 lines.push(hint);
+                return lines;
+            }
+            if err.get(ContextKind::SuggestedSubcommand).is_some() {
+                return lines;
             }
         }
         ErrorKind::UnknownArgument => {
@@ -210,17 +214,18 @@ pub(crate) fn usage_hints(err: &clap::Error) -> Vec<String> {
                 );
                 return lines;
             }
-            // Issue 616: a newer release can know only an unknown flag
-            // name. A value, an extra positional or a flag of another
-            // command gets no update line.
-            if !unknown_flag(&Cli::command(), name) {
+            // Issue 616 and T-620: only a flag that no command knows and that
+            // clap did not match gets the unknown-word line. A value, an extra
+            // positional, a flag of another command, or a typing mistake gets none.
+            if !unknown_flag(&Cli::command(), name) || err.get(ContextKind::SuggestedArg).is_some()
+            {
                 return lines;
             }
         }
         _ => return lines,
     }
     lines.push(format!(
-        "podnet {} does not know {}; a newer release can: podnet update --check",
+        "podnet {} does not know {}; run: podnet --help",
         env!("CARGO_PKG_VERSION"),
         invalid().map_or_else(|| "it".to_string(), |w| format!("'{w}'"))
     ));

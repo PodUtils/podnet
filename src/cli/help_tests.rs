@@ -146,16 +146,25 @@ fn a_word_that_is_no_command_gets_a_hint() {
     assert_eq!(word_hint("123456"), None, "not a port");
 }
 
-/// E10: an unknown command or flag names the version and the update.
+/// E8 and T-620: a word that matches a command hint gets that hint alone; an
+/// unknown command or flag names the version and `podnet --help`, never an
+/// update check.
 #[test]
 fn an_unknown_command_names_the_version() {
     let err = top_command()
         .try_get_matches_from(["podnet", "8080"])
         .unwrap_err();
     let lines = usage_hints(&err);
-    assert_eq!(lines.len(), 2, "{lines:?}");
-    assert!(lines[1].contains(env!("CARGO_PKG_VERSION")), "{lines:?}");
-    assert!(lines[1].contains("podnet update --check"), "{lines:?}");
+    assert_eq!(lines.len(), 1, "{lines:?}");
+    assert!(lines[0].contains("podnet tunnel --url"), "{lines:?}");
+    let err = top_command()
+        .try_get_matches_from(["podnet", "frobnicate"])
+        .unwrap_err();
+    let lines = usage_hints(&err);
+    assert_eq!(lines.len(), 1, "{lines:?}");
+    assert!(lines[0].contains(env!("CARGO_PKG_VERSION")), "{lines:?}");
+    assert!(lines[0].contains("podnet --help"), "{lines:?}");
+    assert!(!lines[0].contains("update --check"), "{lines:?}");
     let err = top_command()
         .try_get_matches_from(["podnet", "tunnel", "--bogus"])
         .unwrap_err();
@@ -169,11 +178,11 @@ fn an_unknown_command_names_the_version() {
     );
 }
 
-/// Issue 616: a value, an extra positional or a flag of another command
-/// is a syntax error: no update line. Only a flag that no command knows
-/// gets it.
+/// Issue 616 and T-620: a value, an extra positional or a flag of another
+/// command is a syntax error with no extra line. Only a flag that no command
+/// knows gets the `podnet --help` line.
 #[test]
-fn only_a_flag_that_no_command_knows_names_the_update() {
+fn only_a_flag_that_no_command_knows_names_the_help() {
     let hints = |line: &str| {
         let err = top_command()
             .try_get_matches_from(line.split_whitespace())
@@ -192,12 +201,51 @@ fn only_a_flag_that_no_command_knows_names_the_update() {
     for line in ["podnet tunnel --bogus", "podnet relay node X --bogus-flag"] {
         let lines = hints(line);
         assert_eq!(lines.len(), 1, "{line}: {lines:?}");
-        assert!(lines[0].contains("podnet update --check"), "{line}");
+        assert!(lines[0].contains("podnet --help"), "{line}: {lines:?}");
+        assert!(!lines[0].contains("update --check"), "{line}: {lines:?}");
     }
     assert!(unknown_flag(&top_command(), "--bogus"));
     assert!(!unknown_flag(&top_command(), "--json"));
     assert!(!unknown_flag(&top_command(), "-q"));
     assert!(!unknown_flag(&top_command(), "123456"));
+}
+
+/// T-620 (GitHub #786): an unknown command, typing mistake or unknown flag
+/// does not promise that a newer release knows it. Clap keeps its tip, and
+/// an unknown word points to `podnet --help`.
+#[test]
+fn an_unknown_word_does_not_promise_a_newer_release() {
+    let cases: &[(&[&str], Option<&str>, bool)] = &[
+        // (argv, expected clap suggestion, expects podnet --help hint)
+        (&["podnet", "tunel"], Some("tunnel"), false),
+        (&["podnet", "frobnicate"], None, true),
+        (&["podnet", "--bogus-flag"], None, true),
+        (&["podnet", "tunnel", "--bogus"], None, true),
+        (&["podnet", "tunnel", "--protocl", "quic"], Some("--protocol"), false),
+    ];
+    for &(argv, suggestion, want_help_hint) in cases {
+        let err = top_command().try_get_matches_from(argv).unwrap_err();
+        let rendered = err.render().to_string();
+        let hints = usage_hints(&err);
+        let joined = hints.join("\n");
+        assert!(
+            !joined.contains("newer release") && !joined.contains("update --check"),
+            "{argv:?}: false update promise: {joined:?}"
+        );
+        if let Some(tip) = suggestion {
+            assert!(rendered.contains(tip), "{argv:?}: lost clap tip {tip}: {rendered}");
+            assert!(
+                hints.is_empty(),
+                "{argv:?}: extra hint hides clap tip: {hints:?}"
+            );
+        }
+        if want_help_hint {
+            assert!(
+                joined.contains("podnet --help"),
+                "{argv:?}: missing podnet --help hint: {hints:?}"
+            );
+        }
+    }
 }
 
 #[test]
