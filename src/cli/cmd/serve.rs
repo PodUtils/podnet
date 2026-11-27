@@ -472,3 +472,36 @@ mod tests {
         assert!(!serve_show(show, dir.path(), false).root_404);
     }
 }
+
+#[cfg(test)]
+#[test]
+fn a_one_shot_serve_flag_writes_no_foreground_notice() {
+    use crate::cli::argv::foreground_hint;
+
+    let cases: &[(&str, bool)] = &[
+        ("podnet serve --add-user alice:read --users users", false),
+        ("podnet serve --add-user=alice:read --users users", false),
+        (
+            "podnet serve --add-user alice:write --replace-user --users users",
+            false,
+        ),
+        ("podnet serve --hash-password", false),
+        ("podnet serve ./public --check", false),
+        ("podnet serve ./public --detach", false),
+        ("podnet serve ./public --run-for 5", false),
+        ("podnet serve ./public", true),
+        (
+            "podnet serve --dir ./share --list --local 127.0.0.1:8080",
+            true,
+        ),
+    ];
+    for &(line, want_notice) in cases {
+        let argv: Vec<String> = line.split_whitespace().map(String::from).collect();
+        let got = foreground_hint(Some("serve"), &argv, false, true);
+        assert_eq!(
+            got.is_some(),
+            want_notice,
+            "{line}: got foreground notice {got:?}"
+        );
+    }
+}

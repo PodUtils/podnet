@@ -205,7 +205,7 @@ pub(crate) const SERVER_COMMANDS: &[&str] = &[
 
 /// The flags that end a server command without a stop signal: it runs in
 /// the background, stops after a time or an event, or does one task and
-/// exits (issue 617: --check, --hash-password, --stdio).
+/// exits (issue 617, T-627: --check, --hash-password, --add-user, --stdio).
 const ENDS_ALONE: &[&str] = &[
     "--detach",
     "--run-for",
@@ -214,6 +214,8 @@ const ENDS_ALONE: &[&str] = &[
     "--idle-secs",
     "--check",
     "--hash-password",
+    "--add-user",
+    "--replace-user",
     "--stdio",
     "--help",
     "-h",
