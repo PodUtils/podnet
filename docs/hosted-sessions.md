@@ -22,8 +22,9 @@ If the checkout is shallow and the task needs more history, run
 Run `sh scripts/cloud-setup.sh` to prepare just the native tools. It
 installs the Rust toolchain that CI pins and fetches the locked
 dependencies for the host target. Add `--dev-tools` to install the host
-musl Rust target and missing `groff`, `mandoc` and `shellcheck` packages
-when passwordless `sudo apt-get` is available. A warm cache works offline. The
+musl Rust target and missing `groff`, `mandoc`, `shellcheck` and
+`musl-tools` packages when root or passwordless `sudo apt-get` is
+available. A warm cache works offline. The
 setup needs Linux, a C compiler, Git, Python 3, curl, `flock`,
 `sha256sum` and `timeout`. It can bootstrap Rustup on x86-64 and ARM64.
 
@@ -31,9 +32,11 @@ Claude Cloud loads the Rust environment for Bash through its hook.
 In Codex, Antigravity and other shells, run `. ./scripts/cloud-env.sh` from the
 repository root in each shell. `scripts/agent/check.sh` and
 `scripts/agent/parity-snapshot.sh` load it when the pinned toolchain or
-`.work/cloud` exists. The defaults keep Rustup and the Cargo cache in
-`.work/cloud/`. Set both `RUSTUP_HOME` and `CARGO_HOME` before setup to use
-other directories (Antigravity pre-sets `/opt/rustup` and `/opt/cargo`).
+`.work/cloud` exists. `scripts/cloud-env.sh` defaults `CARGO_BUILD_JOBS`
+to `min(nproc, 4)` (`2` on 2-vCPU VMs). The defaults keep Rustup and the
+Cargo cache in `.work/cloud/`. Set both `RUSTUP_HOME` and `CARGO_HOME`
+before setup to use other directories (Antigravity pre-sets `/opt/rustup`
+and `/opt/cargo`).
 
 Run `cargo run --locked -q -p podnet-todo -- check` to check the work
 record. When the task needs the CLI, run
@@ -53,22 +56,25 @@ allows the process to write its UID and GID maps in `/proc`.
 
 * **Environment**: Ubuntu 24.04 KVM VM on x86-64, non-root user
   `antigravity` (uid 1001, `umask 022`), PID 1 is `systemd` (no subreaper
-  needed), unprivileged user and network namespaces and `/dev/net/tun`
-  work, Docker is available.
+  needed), unprivileged user and network namespaces (`unshare -Urn`) and
+  `/dev/net/tun` work, Docker answers without `sudo` (`antigravity` is in
+  the `docker` group).
 * **Limits and persistence**: 2 vCPUs, 7.27 GiB cgroup RAM (`memory.max`)
   with 8 GiB swap, about 84 GiB free on the root overlay (`/dev/vda`).
   The soft open-file limit is `1024` (hard `4096`); raise it with
   `ulimit -n 4096` if a test needs more descriptors. Keep one Cargo build
-  at a time (`CARGO_BUILD_JOBS=2`). `/home/antigravity`, `/opt`
-  (`/opt/cargo`, `/opt/rustup`), `/tmp` and `sudo apt-get` packages live
-  on the same root overlay: they persist across pause and resume of one
-  conversation and do not carry over to a new conversation. Uploaded
-  project files under `/home/antigravity/upload` persist across
-  conversations.
+  at a time (`scripts/cloud-env.sh` defaults `CARGO_BUILD_JOBS=2` on
+  2-vCPU hosts). `/home/antigravity`, `/opt` (`/opt/cargo`, `/opt/rustup`),
+  `/tmp` and `sudo apt-get` packages live on the same root overlay: they
+  persist across pause and resume of one conversation and do not carry
+  over to a new conversation. Uploaded project files under
+  `/home/antigravity/upload` persist across conversations.
 * **Checkout and shell**: the checkout is shallow (50 commits) at
   `/home/antigravity/PodUtils/podnet`. Each command starts a fresh
   non-interactive shell with no `CLAUDE_ENV_FILE`: source
-  `. ./scripts/cloud-env.sh` before manual Cargo commands.
+  `. ./scripts/cloud-env.sh` before manual Cargo commands. `python3` on
+  `PATH` is pyenv's Python (no system `PyYAML`); `/usr/bin/python3` has
+  system packages (`scripts/agent/check.sh` falls back automatically).
 * **Watchers**: processes started without `IsDaemon: true` may stop when
   a turn ends, and `.agents/environment.json` setup scripts do not keep
   long-lived processes. Start each watcher as a persistent daemon task
@@ -85,7 +91,9 @@ allows the process to write its UID and GID maps in `/proc`.
 * **Subagents**: `invoke_subagent` uses `Workspace: inherit`. The lead
   creates each local worktree (`git worktree add -b NAME .claude/worktrees/NAME main`)
   before it starts the worker and instructs it to work only inside that
-  directory.
+  directory. Select the worker model from the table below (when
+  `invoke_subagent` exposes tiers rather than effort flags, use `pro` or
+  `inherit` for Neon and `flash` for Hydrogen).
 
 ## Watch issues and CI
 

@@ -16,6 +16,15 @@ case ":$PATH:" in
     *) export PATH="$CARGO_HOME/bin:$PATH" ;;
 esac
 export CARGO_NET_GIT_FETCH_WITH_CLI="${CARGO_NET_GIT_FETCH_WITH_CLI:-true}"
+if [ -z "${CARGO_BUILD_JOBS:-}" ]; then
+    podnet_cpus=$(nproc 2>/dev/null || printf 4)
+    case "$podnet_cpus" in
+        [1-3]) CARGO_BUILD_JOBS=$podnet_cpus ;;
+        *) CARGO_BUILD_JOBS=4 ;;
+    esac
+    unset podnet_cpus
+fi
+export CARGO_BUILD_JOBS
 export CARGO_INCREMENTAL="${CARGO_INCREMENTAL:-0}"
 export CARGO_PROFILE_DEV_DEBUG="${CARGO_PROFILE_DEV_DEBUG:-0}"
 export CARGO_PROFILE_TEST_DEBUG="${CARGO_PROFILE_TEST_DEBUG:-0}"

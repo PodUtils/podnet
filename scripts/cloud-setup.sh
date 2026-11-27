@@ -4,7 +4,8 @@
 # Usage: sh scripts/cloud-setup.sh [--dev-tools]
 #
 # With --dev-tools, also add the host musl Rust target and install missing
-# groff, mandoc and shellcheck packages when passwordless sudo apt-get works.
+# groff, mandoc, shellcheck and musl-tools packages when root or passwordless
+# sudo apt-get works.
 set -eu
 
 dev_tools=0
@@ -13,6 +14,10 @@ while [ $# -gt 0 ]; do
         --dev-tools)
             dev_tools=1
             shift
+            ;;
+        -h | --help)
+            sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'
+            exit 0
             ;;
         *)
             echo "usage: sh scripts/cloud-setup.sh [--dev-tools]" >&2
@@ -80,11 +85,25 @@ install_dev_tools() {
             missing="$missing $pkg"
         fi
     done
-    if [ -n "$missing" ] && command -v apt-get >/dev/null 2>&1 &&
-       command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
-        # shellcheck disable=SC2086
-        DEBIAN_FRONTEND=noninteractive timeout 300 sudo -n apt-get update -qq </dev/null &&
-            DEBIAN_FRONTEND=noninteractive timeout 300 sudo -n apt-get install -y -qq $missing </dev/null
+    if ! command -v musl-gcc >/dev/null 2>&1; then
+        missing="$missing musl-tools"
+    fi
+    if [ -n "$missing" ] && command -v apt-get >/dev/null 2>&1; then
+        apt_sudo=none
+        if [ "$(id -u)" = 0 ]; then
+            apt_sudo=
+        elif command -v sudo >/dev/null 2>&1 && sudo -n -E true 2>/dev/null; then
+            apt_sudo="sudo -n -E"
+        elif command -v sudo >/dev/null 2>&1 &&
+             (sudo -n true 2>/dev/null || sudo -n apt-get --version >/dev/null 2>&1); then
+            apt_sudo="sudo -n"
+        fi
+        if [ "$apt_sudo" != none ]; then
+            # shellcheck disable=SC2086
+            DEBIAN_FRONTEND=noninteractive timeout 300 $apt_sudo apt-get update -qq </dev/null &&
+                DEBIAN_FRONTEND=noninteractive timeout 300 $apt_sudo apt-get install -y -qq \
+                    --no-install-recommends $missing </dev/null
+        fi
     fi
 }
 
