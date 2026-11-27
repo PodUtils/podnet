@@ -204,45 +204,152 @@ pub struct Online {
 
 /// Bring the node of the key `me` online: the first server of `road` whose
 /// probe answers (when the road probes) and whose DERP handshake completes.
-/// When none does, exit 69 with the reason of each server.
+/// When none does, exit 69 with each cause grouped once. A proxy-hop failure
+/// stops the search after the first server.
 pub async fn online(me: &Identity, road: &Road) -> Result<Online> {
     let check: Box<dyn Fn(&Server) -> Probing + Send + Sync> = if road.probed {
         Box::new(probe())
     } else {
         Box::new(|_: &Server| -> Probing { Box::pin(async { Ok(()) }) })
     };
+    online_with(me, road, check).await
+}
+
+/// Remove a leading server label from a probe failure string.
+fn strip_server_prefix(server: &Server, text: &str) -> String {
+    let label = server.to_string();
+    if let Some(rest) = text.strip_prefix(&label) {
+        if let Some(rest) = rest.strip_prefix(": ") {
+            return rest.to_string();
+        }
+        if let Some(rest) = rest.strip_prefix(' ') {
+            return rest.to_string();
+        }
+    }
+    text.to_string()
+}
+
+/// True when `cause` shows that the proxy hop itself failed, not the target.
+fn is_proxy_hop_text(cause: &str) -> bool {
+    cause.contains("could not reach the proxy")
+        || cause.contains("could not resolve the proxy")
+        || cause.contains("the proxy setting is not usable:")
+        || (cause.contains("the proxy ") && cause.contains(" did not answer as its protocol says:"))
+        || (cause.contains("the proxy command") && cause.contains(" exited "))
+}
+
+/// True when a dial or handshake failure broke at the proxy hop itself.
+fn is_proxy_hop_failure(failure: &pod_core::Failure) -> bool {
+    if let Some(dial) = std::error::Error::source(failure)
+        .and_then(|err| err.downcast_ref::<pod_proxy::DialError>())
+    {
+        return matches!(
+            dial,
+            pod_proxy::DialError::BadProxy(_)
+                | pod_proxy::DialError::ProxyUnreachable { .. }
+                | pod_proxy::DialError::ProxyProtocol { .. }
+                | pod_proxy::DialError::ProxyExited { .. }
+                | pod_proxy::DialError::Timeout {
+                    stage: pod_core::Stage::Proxy,
+                    ..
+                }
+        );
+    }
+    is_proxy_hop_text(&failure.to_string())
+}
+
+/// Format grouped server failures and any trailing search notes.
+fn summarize_missed(missed: &[(Server, String)], notes: &[String]) -> String {
+    let mut parts = Vec::new();
+    if !missed.is_empty() {
+        parts.push(pod_proxy::group_texts(missed, "servers"));
+    }
+    parts.extend(notes.iter().cloned());
+    if parts.is_empty() {
+        "the list of servers is empty".to_string()
+    } else {
+        parts.join("; ")
+    }
+}
+
+async fn online_with<P, F>(me: &Identity, road: &Road, check: P) -> Result<Online>
+where
+    P: Fn(&Server) -> F,
+    F: Future<Output = Result<(), String>>,
+{
     let secret = Arc::new(Secret::of_node(me));
     let names = names();
-    let (home, missed) = far::home(
-        &secret,
-        &road.dial,
-        &road.events,
-        &names,
-        &road.servers,
-        check,
-    )
-    .await;
-    let Some((server, conn)) = home else {
-        let why = if missed.is_empty() {
-            "the list of servers is empty".to_string()
-        } else {
-            missed.join("; ")
+    let mut missed: Vec<(Server, String)> = Vec::new();
+    let mut notes: Vec<String> = Vec::new();
+    let mut main_since: Option<tokio::time::Instant> = None;
+
+    for (at, server) in road.servers.iter().enumerate() {
+        if server.fleet_name() == Some(servers::MAIN_FLEET) {
+            let since = *main_since.get_or_insert_with(tokio::time::Instant::now);
+            if since.elapsed() > far::MAIN_SEARCH {
+                let left = road.servers.len() - at;
+                notes.push(format!(
+                    "{left} servers of the main fleet not tried within {} s",
+                    far::MAIN_SEARCH.as_secs()
+                ));
+                break;
+            }
+        }
+        if road.probed {
+            if let Err(why) = check(server).await {
+                let cause = strip_server_prefix(server, &why);
+                if is_proxy_hop_text(&cause) {
+                    return Err(exit::fault(
+                        Fault::Unavailable,
+                        anyhow!("no DERP server took the node: {cause}"),
+                    ));
+                }
+                missed.push((server.clone(), cause));
+                continue;
+            }
+        }
+        let node = Node {
+            secret: secret.clone(),
+            server: server.clone(),
+            dial: road.dial.clone(),
+            events: road.events.clone(),
+            names: names.clone(),
         };
-        return Err(exit::fault(
-            Fault::Unavailable,
-            anyhow!("no DERP server took the node: {why}"),
-        ));
-    };
-    let ticket = Ticket {
-        node: me.public(),
-        derp: secret.public(),
-        server,
-    };
-    Ok(Online {
-        ticket,
-        secret,
-        conn,
-    })
+        match far::connect(&node).await {
+            Ok(conn) => {
+                let ticket = Ticket {
+                    node: me.public(),
+                    derp: secret.public(),
+                    server: server.clone(),
+                };
+                return Ok(Online {
+                    ticket,
+                    secret,
+                    conn,
+                });
+            }
+            Err(why) => {
+                if is_proxy_hop_failure(&why) {
+                    return Err(exit::fault(
+                        Fault::Unavailable,
+                        anyhow!("no DERP server took the node: {why}"),
+                    ));
+                }
+                let cause = if road.probed {
+                    format!("answered its probe, then its handshake failed: {why}")
+                } else {
+                    why.to_string()
+                };
+                missed.push((server.clone(), cause));
+            }
+        }
+    }
+
+    let why = summarize_missed(&missed, &notes);
+    Err(exit::fault(
+        Fault::Unavailable,
+        anyhow!("no DERP server took the node: {why}"),
+    ))
 }
 
 /// The node's end of the channel: a client whose key `keys` does not allow
@@ -429,5 +536,186 @@ where
         },
         Ok(Outcome::Plain(None)) => Ok(()),
         Ok(Outcome::Plain(Some(e))) => Err(unavailable(anyhow!("the session over DERP: {e}"))),
+    }
+}
+
+#[cfg(test)]
+#[tokio::test]
+async fn the_error_line_names_one_cause_once() {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    use pod_core::{Class, Failure, Stage};
+    use pod_proxy::DialError;
+
+    let make_servers = |n: usize| -> Vec<Server> {
+        (0..n)
+            .map(|i| Server::parse(&format!("s{i}.example")).unwrap())
+            .collect()
+    };
+    let me = Identity::from_seed(&[7u8; 32]);
+
+    struct Case {
+        label: &'static str,
+        count: usize,
+        make_err: fn(usize) -> Failure,
+        expected_attempts: usize,
+        want_once: &'static [&'static str],
+        want_substrings: &'static [&'static str],
+    }
+
+    let cases = [
+        Case {
+            label: "100 servers through an unreachable proxy stop after the first failure",
+            count: 100,
+            make_err: |_| {
+                Failure::from(DialError::ProxyUnreachable {
+                    proxy: "127.0.0.1:1".into(),
+                    detail: "Connection refused".into(),
+                })
+            },
+            expected_attempts: 1,
+            want_once: &["could not reach the proxy 127.0.0.1:1: Connection refused"],
+            want_substrings: &["no DERP server took the node:"],
+        },
+        Case {
+            label: "100 servers with one non-proxy cause group under one cause",
+            count: 100,
+            make_err: |_| Failure::new(Stage::Connect, Class::Unavailable, "connection refused"),
+            expected_attempts: 100,
+            want_once: &["connection refused"],
+            want_substrings: &["100 servers (s0.example, s1.example, ...)"],
+        },
+        Case {
+            label: "mixed causes group each cause once",
+            count: 5,
+            make_err: |i| {
+                if i < 3 {
+                    Failure::new(Stage::Connect, Class::Unavailable, "connection refused")
+                } else {
+                    Failure::new(Stage::Tls, Class::Timeout, "TLS handshake timed out")
+                }
+            },
+            expected_attempts: 5,
+            want_once: &["connection refused", "TLS handshake timed out"],
+            want_substrings: &[
+                "3 servers (s0.example, s1.example, ...)",
+                "2 servers (s3.example, s4.example)",
+            ],
+        },
+        Case {
+            label: "a single server failure names the server once",
+            count: 1,
+            make_err: |_| Failure::new(Stage::Connect, Class::Unavailable, "connection refused"),
+            expected_attempts: 1,
+            want_once: &["connection refused"],
+            want_substrings: &["s0.example"],
+        },
+    ];
+
+    for case in cases {
+        let attempts = Arc::new(AtomicUsize::new(0));
+        let counter = attempts.clone();
+        let make_err = case.make_err;
+        let dial: Dial = Arc::new(move |_server: &Server| {
+            let idx = counter.fetch_add(1, Ordering::SeqCst);
+            let err = make_err(idx);
+            Box::pin(async move { Err(err) })
+        });
+        let road = Road {
+            dial,
+            servers: make_servers(case.count),
+            events: Arc::new(|_: Event| {}),
+            probed: false,
+        };
+        let err = match online(&me, &road).await {
+            Ok(_) => panic!("{}: expected error", case.label),
+            Err(err) => err,
+        };
+        assert_eq!(exit::code_of(&err), 69, "{}: exit code", case.label);
+        let line = err.to_string();
+        assert_eq!(
+            attempts.load(Ordering::SeqCst),
+            case.expected_attempts,
+            "{}: attempts (line: {line})",
+            case.label
+        );
+        assert!(
+            line.len() < 400,
+            "{}: line too long ({} chars): {line}",
+            case.label,
+            line.len()
+        );
+        for needle in case.want_once {
+            assert_eq!(
+                line.matches(needle).count(),
+                1,
+                "{}: expected {needle:?} once in {line:?}",
+                case.label
+            );
+        }
+        for sub in case.want_substrings {
+            assert!(
+                line.contains(sub),
+                "{}: expected {sub:?} in {line:?}",
+                case.label
+            );
+        }
+    }
+
+    // Probed path: stop after one proxy-hop failure and group identical probe timeouts.
+    let probe_cases: &[(&str, fn(&Server) -> String, usize, &str, &str)] = &[
+        (
+            "probed: 100 servers stop after first unreachable proxy",
+            |s| format!("{s}: could not reach the proxy 127.0.0.1:1: Connection refused"),
+            1,
+            "could not reach the proxy 127.0.0.1:1: Connection refused",
+            "no DERP server took the node: could not reach the proxy 127.0.0.1:1: Connection refused",
+        ),
+        (
+            "probed: 100 servers with identical timeout group once",
+            |s| format!("{s} did not answer /generate_204 within 5 s"),
+            100,
+            "did not answer /generate_204 within 5 s",
+            "100 servers (s0.example, s1.example, ...): did not answer /generate_204 within 5 s",
+        ),
+    ];
+    for &(label, make_probe_err, expected_probes, once_needle, want_sub) in probe_cases {
+        let probes = Arc::new(AtomicUsize::new(0));
+        let counter = probes.clone();
+        let dial: Dial = Arc::new(|_server: &Server| {
+            Box::pin(async { Err(Failure::new(Stage::Connect, Class::Unavailable, "unused")) })
+        });
+        let road = Road {
+            dial,
+            servers: make_servers(100),
+            events: Arc::new(|_: Event| {}),
+            probed: true,
+        };
+        let err = match online_with(&me, &road, move |server: &Server| {
+            counter.fetch_add(1, Ordering::SeqCst);
+            let msg = make_probe_err(server);
+            async move { Err(msg) }
+        })
+        .await
+        {
+            Ok(_) => panic!("{label}: expected error"),
+            Err(err) => err,
+        };
+        assert_eq!(exit::code_of(&err), 69, "{label}: exit code");
+        let line = err.to_string();
+        assert_eq!(
+            probes.load(Ordering::SeqCst),
+            expected_probes,
+            "{label}: probes (line: {line})"
+        );
+        assert_eq!(
+            line.matches(once_needle).count(),
+            1,
+            "{label}: expected {once_needle:?} once in {line:?}"
+        );
+        assert!(
+            line.contains(want_sub),
+            "{label}: expected {want_sub:?} in {line:?}"
+        );
     }
 }
