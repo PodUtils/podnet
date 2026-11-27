@@ -229,6 +229,7 @@ pub(crate) async fn relay(args: RelayArgs) -> Result<()> {
             detach,
             ..
         } => {
+            reverse::file_of(&dir, &name)?;
             let (token, relay, expires) = match token {
                 Some(token) => (token, relay, None),
                 None => {

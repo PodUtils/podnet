@@ -27,8 +27,23 @@ fn check_dir(dir: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Check a pair name against the relay rule: 1 to 128 lower-case ASCII
+/// letters, digits, `.`, `-` and `_`, not starting with `-` or `.`.
+fn check_pair_name(name: &str) -> Result<()> {
+    pod_relay::relay::check_node_name(name)
+        .map_err(|e| fault(Fault::Usage, anyhow::anyhow!("{e}")))?;
+    if name.bytes().any(|b| b.is_ascii_uppercase()) {
+        return Err(fault(
+            Fault::Usage,
+            anyhow::anyhow!("{name:?} is not a pair name (upper-case letters are not allowed)"),
+        ));
+    }
+    Ok(())
+}
+
 /// The pair file of the pair `name` in `dir`.
 pub fn file_of(dir: &Path, name: &str) -> Result<PathBuf> {
+    check_pair_name(name)?;
     let file = pod_relay::pair::file_name(name)
         .map_err(|e| fault(Fault::Usage, anyhow::anyhow!("{e}")))?;
     Ok(dir.join(file))
@@ -200,5 +215,57 @@ pub(super) mod tests {
         );
         assert_eq!(load(dir.path(), None).unwrap().name, "new");
         assert!(!format!("{new:?}").contains("testonly"));
+    }
+
+    #[test]
+    fn a_pair_name_with_an_upper_case_letter_exits_64() {
+        let dir = tempfile::tempdir().unwrap();
+        let cases: &[(&str, Option<&str>)] = &[
+            (
+                "UPPER",
+                Some("is not a pair name (upper-case letters are not allowed)"),
+            ),
+            (
+                "Upper",
+                Some("is not a pair name (upper-case letters are not allowed)"),
+            ),
+            (
+                "aBc-1",
+                Some("is not a pair name (upper-case letters are not allowed)"),
+            ),
+            (
+                "box_A.1",
+                Some("is not a pair name (upper-case letters are not allowed)"),
+            ),
+            ("x/y", Some("is not a pair name")),
+            ("A B", Some("is not a pair name")),
+            ("", Some("pair name is empty")),
+            ("-a", Some("is not a pair name")),
+            (".a", Some("is not a pair name")),
+            ("upper", None),
+            ("a-b_c.1", None),
+            ("podnet-01", None),
+        ];
+        for &(name, want_err) in cases {
+            let res = file_of(dir.path(), name);
+            match want_err {
+                Some(needle) => {
+                    let err = res.expect_err(&format!("{name:?} must fail"));
+                    assert_eq!(
+                        crate::exit::code_of(&err),
+                        crate::exit::USAGE,
+                        "{name:?}: {err:#}"
+                    );
+                    let text = format!("{err:#}");
+                    assert!(
+                        text.contains(needle),
+                        "{name:?}: expected {needle:?} in {text:?}"
+                    );
+                }
+                None => {
+                    assert!(res.is_ok(), "{name:?} must succeed: {:?}", res.err());
+                }
+            }
+        }
     }
 }
