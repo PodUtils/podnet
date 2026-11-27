@@ -107,6 +107,10 @@ impl Extension for NoAssociate {
     }
 }
 
+/// How long `exit --stdio` waits for the target to send data or close after
+/// the client closes stdin (T-621).
+pub const DRAIN_LIMIT: std::time::Duration = std::time::Duration::from_secs(1);
+
 /// Serve one SOCKS5 session on `stream` over `dial` until it ends.
 pub async fn serve<S>(stream: S, dial: Arc<dyn Dial>) -> Result<()>
 where
@@ -115,10 +119,106 @@ where
     let door = Door::new(dial)
         .connect_only()
         .with_extension(Arc::new(NoAssociate))
-        .with_udp_in_stream();
+        .with_udp_in_stream()
+        .with_client_eof_limit(DRAIN_LIMIT);
     door.handle(stream).await
 }
 
 #[cfg(test)]
 #[path = "exit_stdio_tests.rs"]
 mod tests;
+
+/// T-621 (GitHub #787): after stdin closes, `exit --stdio` shuts the write
+/// side of the target and ends cleanly even when the target never writes or
+/// closes; a target that answers after stdin closes still delivers its full
+/// answer.
+#[cfg(test)]
+#[tokio::test]
+async fn the_run_ends_when_stdin_closes_and_the_target_stays_open() {
+    crate::test_host::need_loopback!();
+    use std::time::Duration;
+    use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
+
+    // Case 1: target accepts and never writes or closes.
+    let silent = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let silent_port = silent.local_addr().unwrap().port();
+    let (hold_tx, hold_rx) = tokio::sync::oneshot::channel::<()>();
+    let (saw_eof_tx, saw_eof_rx) = tokio::sync::oneshot::channel::<bool>();
+    tokio::spawn(async move {
+        let (mut s, _) = silent.accept().await.unwrap();
+        let mut buf = [0u8; 16];
+        let eof = matches!(s.read(&mut buf).await, Ok(0));
+        let _ = saw_eof_tx.send(eof);
+        let _ = hold_rx.await;
+        drop(s);
+    });
+
+    let (client, stream) = tokio::io::duplex(4096);
+    let (mut cr, mut cw) = tokio::io::split(client);
+    let dial = Arc::new(ExitDial::with(Arc::new(crate::dialers::Direct), None));
+    let served = tokio::spawn(serve(stream, dial.clone()));
+
+    cw.write_all(&[5, 1, 0]).await.unwrap();
+    let mut method = [0u8; 2];
+    cr.read_exact(&mut method).await.unwrap();
+    let mut req = vec![5, 1, 0, 1, 127, 0, 0, 1];
+    req.extend_from_slice(&silent_port.to_be_bytes());
+    cw.write_all(&req).await.unwrap();
+    let mut reply = [0u8; 10];
+    cr.read_exact(&mut reply).await.unwrap();
+    assert_eq!(reply[1], 0, "{reply:?}");
+
+    // Client closes stdin while stdout stays open.
+    cw.shutdown().await.unwrap();
+
+    let saw_eof = tokio::time::timeout(Duration::from_secs(3), saw_eof_rx)
+        .await
+        .expect("target did not observe write shutdown")
+        .unwrap();
+    assert!(saw_eof, "target must see EOF after client closes stdin");
+
+    let finished = tokio::time::timeout(Duration::from_secs(4), served)
+        .await
+        .expect("exit --stdio did not end after stdin closed against a silent target")
+        .unwrap();
+    assert!(finished.is_ok(), "expected Ok(()), got {finished:?}");
+    let _ = hold_tx.send(());
+
+    // Case 2: normal half-close — client sends request and closes stdin,
+    // target answers after seeing EOF and then closes.
+    let echo = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let echo_port = echo.local_addr().unwrap().port();
+    tokio::spawn(async move {
+        let (mut s, _) = echo.accept().await.unwrap();
+        let mut req_data = Vec::new();
+        s.read_to_end(&mut req_data).await.unwrap();
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        s.write_all(b"reply:").await.unwrap();
+        s.write_all(&req_data).await.unwrap();
+        s.shutdown().await.unwrap();
+    });
+
+    let (client, stream) = tokio::io::duplex(4096);
+    let (mut cr, mut cw) = tokio::io::split(client);
+    let served = tokio::spawn(serve(stream, dial));
+
+    cw.write_all(&[5, 1, 0]).await.unwrap();
+    cr.read_exact(&mut method).await.unwrap();
+    let mut req = vec![5, 1, 0, 1, 127, 0, 0, 1];
+    req.extend_from_slice(&echo_port.to_be_bytes());
+    cw.write_all(&req).await.unwrap();
+    cr.read_exact(&mut reply).await.unwrap();
+    assert_eq!(reply[1], 0, "{reply:?}");
+
+    cw.write_all(b"hello").await.unwrap();
+    cw.shutdown().await.unwrap();
+
+    let mut out = Vec::new();
+    cr.read_to_end(&mut out).await.unwrap();
+    assert_eq!(&out, b"reply:hello");
+    let finished = tokio::time::timeout(Duration::from_secs(4), served)
+        .await
+        .expect("exit --stdio did not end after half-closed response")
+        .unwrap();
+    assert!(finished.is_ok(), "expected Ok(()), got {finished:?}");
+}

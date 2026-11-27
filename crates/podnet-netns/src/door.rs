@@ -74,6 +74,7 @@ pub struct Door {
     udp_bind: std::net::IpAddr,
     default_port: u16,
     flow_limit: Option<Duration>,
+    client_eof_limit: Option<Duration>,
     connect_only: bool,
     extension: Option<Arc<dyn Extension>>,
     udp_in_stream: bool,
@@ -95,6 +96,7 @@ impl Door {
             udp_bind: std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
             default_port: 0,
             flow_limit: None,
+            client_eof_limit: None,
             connect_only: false,
             extension: None,
             udp_in_stream: false,
@@ -120,6 +122,13 @@ impl Door {
     /// lives until a side closes.
     pub fn with_flow_limit(mut self, limit: Duration) -> Door {
         self.flow_limit = Some(limit);
+        self
+    }
+
+    /// After the client reaches EOF, shut the write side of the upstream and
+    /// stop the copy if the upstream sends no byte for `limit` (T-621).
+    pub fn with_client_eof_limit(mut self, limit: Duration) -> Door {
+        self.client_eof_limit = Some(limit);
         self
     }
 
@@ -383,6 +392,16 @@ impl Door {
         A: AsyncRead + AsyncWrite + Unpin + ?Sized,
         B: AsyncRead + AsyncWrite + Unpin + ?Sized,
     {
+        if let Some(drain) = self.client_eof_limit {
+            let copy = splice_with_drain(client, upstream, drain);
+            match self.flow_limit {
+                Some(limit) => {
+                    let _ = tokio::time::timeout(limit, copy).await;
+                }
+                None => copy.await,
+            }
+            return;
+        }
         let copy =
             tokio::io::copy_bidirectional_with_sizes(client, upstream, RELAY_BUFFER, RELAY_BUFFER);
         match self.flow_limit {
@@ -435,6 +454,75 @@ impl Door {
         }
         Ok(Request::Http(request))
     }
+}
+
+/// Copy both ways; after the client reaches EOF, shut the write side of
+/// `upstream` and stop if `upstream` sends no byte for `drain`.
+async fn splice_with_drain<A, B>(client: &mut A, upstream: &mut B, drain: Duration)
+where
+    A: AsyncRead + AsyncWrite + Unpin + ?Sized,
+    B: AsyncRead + AsyncWrite + Unpin + ?Sized,
+{
+    let (mut cr, mut cw) = tokio::io::split(client);
+    let (mut ur, mut uw) = tokio::io::split(upstream);
+    let (eof_tx, mut eof_rx) = tokio::sync::oneshot::channel::<()>();
+
+    let c_to_u = async {
+        let mut buf = vec![0u8; RELAY_BUFFER];
+        loop {
+            match cr.read(&mut buf).await {
+                Ok(0) => {
+                    let _ = uw.flush().await;
+                    let _ = uw.shutdown().await;
+                    let _ = eof_tx.send(());
+                    return;
+                }
+                Ok(n) => {
+                    if uw.write_all(&buf[..n]).await.is_err() {
+                        let _ = eof_tx.send(());
+                        return;
+                    }
+                }
+                Err(_) => {
+                    let _ = eof_tx.send(());
+                    return;
+                }
+            }
+        }
+    };
+
+    let u_to_c = async {
+        let mut buf = vec![0u8; RELAY_BUFFER];
+        let mut draining = false;
+        loop {
+            let read = if draining {
+                match tokio::time::timeout(drain, ur.read(&mut buf)).await {
+                    Ok(res) => res,
+                    Err(_) => break,
+                }
+            } else {
+                tokio::select! {
+                    res = ur.read(&mut buf) => res,
+                    _ = &mut eof_rx => {
+                        draining = true;
+                        continue;
+                    }
+                }
+            };
+            match read {
+                Ok(0) | Err(_) => break,
+                Ok(n) => {
+                    if cw.write_all(&buf[..n]).await.is_err() {
+                        break;
+                    }
+                }
+            }
+        }
+        let _ = cw.flush().await;
+        let _ = cw.shutdown().await;
+    };
+
+    tokio::join!(c_to_u, u_to_c);
 }
 
 enum Request {
