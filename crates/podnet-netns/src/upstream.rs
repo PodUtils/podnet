@@ -114,6 +114,28 @@ impl Proxy {
                 unix_path: Some(path.to_string()),
             });
         }
+        // netbird or netbird:[PORT]: the SOCKS5 listener of NetBird netstack
+        // mode on 127.0.0.1:PORT (default 1080; T-246 / T-247).
+        if spec == "netbird" || spec.starts_with("netbird:") {
+            let port_str = spec["netbird".len()..].trim_start_matches(':');
+            let port: u16 = if port_str.is_empty() {
+                1080
+            } else {
+                let p: u16 = port_str.parse().context("netbird port")?;
+                if p == 0 {
+                    bail!("netbird port must be 1..=65535");
+                }
+                p
+            };
+            return Ok(Self {
+                kind: ProxyKind::Socks5,
+                host: "127.0.0.1".to_string(),
+                port,
+                user: None,
+                pass: None,
+                unix_path: None,
+            });
+        }
         let (scheme, rest) = match spec.split_once("://") {
             Some((s, r)) => (s, r),
             None => ("socks5", spec),

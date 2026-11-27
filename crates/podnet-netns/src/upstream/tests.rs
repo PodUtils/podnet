@@ -178,6 +178,24 @@ fn parses_proxy_specs() {
     assert!(Proxy::parse("ftp://x:1").is_err());
     assert!(Proxy::parse("socks5://nohostport").is_err());
 }
+
+#[test]
+fn netbird_spec_parses_to_loopback_socks5() {
+    for (spec, port) in [
+        ("netbird", 1080),
+        ("netbird:", 1080),
+        ("netbird:11082", 11082),
+    ] {
+        let p = Proxy::parse(spec).unwrap();
+        assert_eq!(p.kind, ProxyKind::Socks5, "{spec}");
+        assert_eq!(p.host, "127.0.0.1", "{spec}");
+        assert_eq!(p.port, port, "{spec}");
+        assert!(p.unix_path.is_none(), "{spec}");
+    }
+    for bad in ["netbird:0", "netbird:abc", "netbird:70000"] {
+        assert!(Proxy::parse(bad).is_err(), "{bad}");
+    }
+}
 #[test]
 fn base64_matches_known_vectors() {
     assert_eq!(base64(b""), "");

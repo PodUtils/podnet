@@ -124,6 +124,12 @@ keep it on `127.0.0.1`. The doctor row sends a SOCKS5 greeting to the port
 (`NB_SOCKS5_LISTENER_PORT`, else 1080). A listener that does not answer is
 `unknown`, not a fault.
 
+On a host whose only egress is an HTTP `CONNECT` proxy, `netbird up -F`
+ignores `HTTP_PROXY` and `HTTPS_PROXY` (its gRPC dialer connects directly).
+Run `netbird up -F` inside `podnet pod -x http://PROXY` so management, signal
+and the WebSocket relay cross the proxy without root or a TUN device
+([report](reports/netbird-netstack-2026-11-27.md)).
+
 ## WireGuard: `wg:FILE`
 
 ```sh
