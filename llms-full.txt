@@ -6913,10 +6913,13 @@ podnet warp proxy
         The file with the password of --proxy-user on its first line (mode
         0600). Variable: PODNET_PROXY_PASSWORD_FILE.
     -r, --rule KIND:VALUE=ACTION
-        A rule for the destinations: KIND:VALUE=ACTION. KIND is domain or cidr.
-        domain takes NAME, or .NAME for the name and the names under it. cidr
-        takes ADDR/PREFIX (IPv4 or IPv6), or @FILE with one prefix on each
-        line. ACTION is tunnel, direct (from the host, with no proxy) or
+        A rule for the destinations: KIND:VALUE=ACTION. KIND is domain, cidr,
+        port or tcp. domain takes NAME, or .NAME for the name and each name
+        under it. cidr takes ADDR/PREFIX (IPv4 or IPv6), or @FILE with one
+        prefix on each line. port takes N or N-M and matches these TCP ports of
+        each host. tcp takes HOST:PORT (a name, an IPv4 address or [IPv6]) and
+        matches one host and one TCP port (a name matches the same name only:
+        no lookup). ACTION is tunnel, direct (from the host, with no proxy) or
         reject. The first rule that matches wins. Repeatable. Variable:
         PODNET_WARP_RULES.
     --l4
@@ -14544,7 +14547,7 @@ ENVIRONMENT
       allow: read a WARP identity file of another user, named with --identity
       or --warp-identity (with a warning). podnet checks the mode (0600) and
       writes nothing next to the file. The default file of the state directory
-      is not covered. By default, a file of another user exits 78. Used by: the
+      is not covered. By default, a file of another user exits 71. Used by: the
       commands of warp and the tunnel commands with --identity or
       --warp-identity.
   PODNET_AUTH_USER, PODNET_AUTH_PASSWORD_FILE
@@ -16537,6 +16540,8 @@ With `--upload`, a write user (or a visitor with the PIN) can add files:
   read user are refused (403 or 409).
 
 ```sh
+mkdir -p share/inbox
+printf '%s\n' "$PASSWORD" | podnet serve --add-user bob:write --users users
 podnet serve --dir ./share --list --upload --users users --local 127.0.0.1:8080
 curl -fsS -u bob -T report.pdf http://127.0.0.1:8080/inbox/report.pdf
 ```
@@ -17043,7 +17048,8 @@ podnet warp down                    # stop it
   another user (root with the `HOME` of a user): the state directory skips
   that `HOME`, and `warp ssh-config --write`, `warp up --persist` and
   `--env-d`, and `autostart` exit 78. `PODNET_FOREIGN_HOME=allow` writes
-  anyway. A WARP identity file that another user owns is refused (exit 78).
+  anyway. A WARP identity file that another user owns or that other users
+  can read is refused (exit 71).
   `PODNET_FOREIGN_IDENTITY=allow` reads it when `--identity PATH` names it:
   the mode must be 0600, podnet logs a warning and writes nothing next to
   the file, and the default file of the state directory is not covered.
@@ -17172,22 +17178,27 @@ others). It reads the variables `PODNET_WARP_API`, `PODNET_WARP_CC`, `PODNET_WAR
   listeners use `--identity`. One file is for one listener only. The ready
   document lists the listeners and their devices in `identities`.
 * Rules of `warp proxy` (`-r KIND:VALUE=ACTION`, repeatable): KIND is
-  `domain` (`NAME`, or `.NAME` for the name and the names under it) or
-  `cidr` (`ADDR/PREFIX`, IPv4 or IPv6, or `@FILE` with one prefix on each
-  line, for example the prefixes of a country). ACTION is `tunnel`,
-  `direct` (from the host, with the resolver of the host and no proxy) or
-  `reject` (SOCKS5 reply 0x02, HTTP 403). The first rule that matches wins.
-  A name that no domain rule matches is resolved through the tunnel when a
-  cidr rule exists. Then a loopback, a link-local or an unspecified address
-  and `localhost` are refused, then `--rule-default` (`tunnel`) applies.
-  `--rules-file FILE` adds the rules of FILE (one on each line, `#` starts a
-  comment); podnet reads it again when it changes and keeps the rules before
-  when it has an error. `--check` prints the rules and exits. An earlier
-  rule that matches each target of a later rule of another action shadows
-  it: podnet gives a warning. A shadowed `reject` rule is an error (exit
-  64). `--allow-shadowed-rules` makes it a warning. The rules
-  apply to TCP; UDP goes through the tunnel. The health line counts the
-  decisions.
+  `domain`, `cidr`, `port` or `tcp`. `domain` takes `NAME`, or `.NAME` for
+  the name and each name under it. `cidr` takes `ADDR/PREFIX` (IPv4 or
+  IPv6), or `@FILE` with one prefix on each line (for example the prefixes
+  of a country). `port` takes `N` or `N-M` (1 to 65535) and matches these
+  TCP ports of each host. `tcp` takes `HOST:PORT` (a name, an IPv4 address
+  or `[IPv6]`) and matches one host and one TCP port; a name matches the
+  same name only (no lookup). ACTION is `tunnel`, `direct` (from the host,
+  with the resolver of the host and no proxy) or `reject` (SOCKS5 reply
+  0x02, HTTP 403). The first rule that matches wins. A name matches the
+  `domain`, `port` and name `tcp` rules first; when none matches and a
+  `cidr` rule or an address `tcp` rule exists, the name is resolved through
+  the tunnel and its addresses match the rules. Then a loopback, a
+  link-local or an unspecified address and `localhost` are refused, then
+  `--rule-default` (`tunnel`) applies. `--rules-file FILE` adds the rules
+  of FILE (one on each line, `#` starts a comment); podnet reads it again
+  when it changes and keeps the rules before when it has an error.
+  `--check` prints the rules and exits. An earlier rule that matches each
+  target of a later rule of another action shadows it: podnet gives a
+  warning. A shadowed `reject` rule is an error (exit 64).
+  `--allow-shadowed-rules` makes it a warning. The rules apply to TCP; UDP
+  goes through the tunnel. The health line counts the decisions.
 
   ```sh
   podnet warp proxy -r domain:.corp.example=direct -r cidr:10.0.0.0/8=direct \
@@ -19064,8 +19075,10 @@ ssh -o ProxyCommand='podnet derp connect TICKET' USER@HOST
 
 Some hosted relays give a public URL for a unix socket through an SSH remote forward on port 443 (the
 server prints the URL in its banner). `podnet ssh-relay` is the client for them. It publishes a unix
-socket and keeps the session: when the relay ends the session, podnet connects again with a backoff and
-prints the new URL.
+socket and keeps the session: when the relay ends a running session, podnet connects again with a backoff
+and prints the new URL. If the first start fails before a session comes up, podnet prints the cause and
+exits with no retry: exit 68 when the relay name does not resolve, or exit 69 when the relay or proxy
+cannot be reached or does not answer in time.
 
 ```sh
 podnet ssh-relay --socket /run/user/1000/origin.sock --detach

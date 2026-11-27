@@ -663,7 +663,14 @@ async fn the_error_line_names_one_cause_once() {
     }
 
     // Probed path: stop after one proxy-hop failure and group identical probe timeouts.
-    let probe_cases: &[(&str, fn(&Server) -> String, usize, &str, &str)] = &[
+    type ProbeCase = (
+        &'static str,
+        fn(&Server) -> String,
+        usize,
+        &'static str,
+        &'static str,
+    );
+    let probe_cases: &[ProbeCase] = &[
         (
             "probed: 100 servers stop after first unreachable proxy",
             |s| format!("{s}: could not reach the proxy 127.0.0.1:1: Connection refused"),

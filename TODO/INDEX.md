@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**631 entries: 14 open, 7 partial, 28 blocked, 582 done.**
+**631 entries: 1 open, 7 partial, 28 blocked, 595 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 3 | 95 | 99 |
-| P2 | 6 | 3 | 11 | 303 | 323 |
-| P3 | 8 | 3 | 14 | 183 | 208 |
-| **All** | 14 | 7 | 28 | 582 | 631 |
+| P2 | 0 | 3 | 11 | 309 | 323 |
+| P3 | 1 | 3 | 14 | 190 | 208 |
+| **All** | 1 | 7 | 28 | 595 | 631 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -664,16 +664,16 @@ M8 Overlays, M9 Later.
 | [T-617](fixes.md) | P3 | S | M5 | defect | done | The reason of a policy refusal says "refuse it", not "refuses it" |
 | [T-618](fixes.md) | P3 | S | M5 | defect | done | With a CA file, podnet-ca.pem beside the binary is not read, and no line says so |
 | [T-619](pods.md) | P1 | S | M5 | defect | done | podnet pod leaves its inbound sockets and their directory after its end (PodUtils/podrunner#369) |
-| [T-620](fixes.md) | P2 | S | M5 | defect | open | podnet: an unknown flag or command says that a newer release knows it |
-| [T-621](fixes.md) | P2 | S | M5 | defect | open | exit: the run does not end when the client closes stdin |
-| [T-622](fixes.md) | P2 | S | M5 | defect | open | stat: a peer name that does not resolve exits 1, not 68 |
-| [T-623](fixes.md) | P2 | S | M5 | defect | open | derp node: the error line repeats the same proxy cause for each of about 100 servers |
-| [T-624](fixes.md) | P2 | S | M5 | defect | open | ssh-relay: a relay that is never reached makes the command retry with no end and no exit code |
-| [T-625](fixes.md) | P3 | S | M5 | defect | open | connect: a TLS server that does not answer gets a hint that names a wrong cause |
-| [T-626](fixes.md) | P3 | S | M5 | defect | open | relay connect: a pair name with an upper-case letter passes the check, and the relay refuses it with exit 69 |
-| [T-627](fixes.md) | P3 | S | M5 | defect | open | serve: --add-user writes the notice of a foreground server |
-| [T-628](fixes.md) | P3 | S | M5 | defect | open | serve: the upload example of docs/serve.md gets 409 as written |
-| [T-629](fixes.md) | P2 | S | M5 | defect | open | connect: a CONNECT that the proxy refuses with 403 is reported as "could not reach the proxy" |
-| [T-630](fixes.md) | P3 | S | M5 | defect | open | warp: a WARP identity file with mode 0644 exits 78, but man exit-status gives 71 |
-| [T-631](fixes.md) | P3 | S | M5 | defect | open | warp proxy: the help and docs/warp.md give two rule kinds, but the binary takes four |
-| [T-632](fixes.md) | P3 | S | M5 | defect | open | pod: --log-format json does not apply to the podnet pod: lines |
+| [T-620](fixes.md) | P2 | S | M5 | defect | done | podnet: an unknown flag or command says that a newer release knows it |
+| [T-621](fixes.md) | P2 | S | M5 | defect | done | exit: the run does not end when the client closes stdin |
+| [T-622](fixes.md) | P2 | S | M5 | defect | done | stat: a peer name that does not resolve exits 1, not 68 |
+| [T-623](fixes.md) | P2 | S | M5 | defect | done | derp node: the error line repeats the same proxy cause for each of about 100 servers |
+| [T-624](fixes.md) | P2 | S | M5 | defect | done | ssh-relay: a relay that is never reached makes the command retry with no end and no exit code |
+| [T-625](fixes.md) | P3 | S | M5 | defect | done | connect: a TLS server that does not answer gets a hint that names a wrong cause |
+| [T-626](fixes.md) | P3 | S | M5 | defect | done | relay connect: a pair name with an upper-case letter passes the check, and the relay refuses it with exit 69 |
+| [T-627](fixes.md) | P3 | S | M5 | defect | done | serve: --add-user writes the notice of a foreground server |
+| [T-628](fixes.md) | P3 | S | M5 | defect | done | serve: the upload example of docs/serve.md gets 409 as written |
+| [T-629](fixes.md) | P2 | S | M5 | defect | done | connect: a CONNECT that the proxy refuses with 403 is reported as "could not reach the proxy" |
+| [T-630](fixes.md) | P3 | S | M5 | defect | done | warp: a WARP identity file with mode 0644 exits 78, but man exit-status gives 71 |
+| [T-631](fixes.md) | P3 | S | M5 | defect | done | warp proxy: the help and docs/warp.md give two rule kinds, but the binary takes four |
+| [T-632](fixes.md) | P3 | S | M5 | defect | done | pod: --log-format json does not apply to the podnet pod: lines |

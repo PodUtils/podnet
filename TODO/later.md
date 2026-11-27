@@ -1260,16 +1260,16 @@ pod_netns_kernel`: 6 passed, on a host that runs the netns backend (no skip line
 
 ## Problem
 
-`relay::run` (`crates/podnet-serve/src/relay.rs:448`) dials the relay, requests one remote forward, reads the URL from the
+`relay::run` (`crates/podnet-serve/src/relay.rs:502`) dials the relay, requests one remote forward, reads the URL from the
 banner and returns `(TunnelHandle, Handle<Client>)`. Nothing watches the session after that. When the
 relay ends the connection or the forward, the URL is dead and the caller is not told. The default
-relay's free tier ends the tunnel after 60 minutes (the banner text of the test at `crates/podnet-serve/src/relay.rs:587`).
+relay's free tier ends the tunnel after 60 minutes (the banner text of the test at `crates/podnet-serve/src/relay.rs:666`).
 A reconnect gives a new port and a new URL. The reverse road (`relay node`, `src/relay_reverse.rs`)
 reconnects with a 1 s to 30 s backoff; this leg does not.
 
 ## Premise
 
-- `inactivity_timeout` is 3600 s (`crates/podnet-serve/src/relay.rs:460`); the forward is requested once (`:490-493`).
+- `inactivity_timeout` is 3600 s (`crates/podnet-serve/src/relay.rs:514`); the forward is requested once (`:544-547`).
 - `grep -rn "relay::run\|RelayConfig" src tests examples` finds no caller outside `crates/podnet-serve/src/relay.rs`.
   `ShareLink::from_relay` (`crates/podnet-serve/src/feature/share_link.rs:118`) has no caller outside a test. No CLI uses the leg.
 - Not measured: the 60 minute expiry on a live relay; the `Handle::is_closed` behaviour of russh 0.64.1.
@@ -1395,7 +1395,7 @@ of the record is tested); a relay that sends text before its identification line
 ## Problem
 
 `RelayConfig::default()` has one relay (`crates/podnet-serve/src/relay.rs:43`), the user `podnet` (`:76`), and one URL rule
-(`pick_tunnel_url`, `:415-428`): the first token that starts with `http(s)://` and does not hold the
+(`pick_tunnel_url`, `:444-457`): the first token that starts with `http(s)://` and does not hold the
 dashboard host of that one relay. Another relay that prints a bare host, a URL split over two data
 frames, or its own dashboard URL fails or gives the wrong URL.
 
@@ -1403,7 +1403,7 @@ frames, or its own dashboard URL fails or gives the wrong URL.
 
 - The fields of `RelayConfig` are `pub`; no flag sets them (no caller, see T-165). `--relay` is the
   flag of the WebSocket relay.
-- `pick_tunnel_url` runs on each `ChannelMsg::Data` chunk (`crates/podnet-serve/src/relay.rs:520`), so a URL that
+- `pick_tunnel_url` runs on each `ChannelMsg::Data` chunk (`crates/podnet-serve/src/relay.rs:574`), so a URL that
   crosses two chunks is lost. The pinned tests are in `crates/podnet-serve/src/relay/tests.rs`.
 - The texts to skip are a fact of `pod-services` (`url-skip` of `pinggy`, `crates/podnet-serve/src/relay.rs:101-107`).
 - Not measured: the other relays of the survey (local artefacts of the issue).
@@ -1544,7 +1544,7 @@ an oversized datagram needs its own counter.
 ## Premise
 
 - Present in podnet: `HeldSyn` (`crates/podnet-netns/src/netns/backend.rs:13,146`; its RST is `rst_reply_for_syn` of `pod_hold::packet`, PodUtils/podcrates); `reap_closed`
-  (`crates/podnet-netns/src/netns/backend.rs:353`) reaps at `Closed`; the vnet stack treats `TimeWait` as closed (`close_and_check`, `PodUtils/podcrates:crates/pod-netstack/src/stack/service.rs`)
+  (`crates/podnet-netns/src/netns/backend.rs:345`) reaps at `Closed`; the vnet stack treats `TimeWait` as closed (`close_and_check`, `PodUtils/podcrates:crates/pod-netstack/src/stack/service.rs`)
   and defers `close` until the queues are empty (the same function). `NetStack` defaults hold the payload at
   64 KiB (`:84-85`). Async writers use `write_all` (`upstream.rs:626`, `framing.rs:43`).
 - No present defect. smoltcp lines are not re-read; the prototype is not in the repo.

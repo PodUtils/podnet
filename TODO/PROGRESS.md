@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 631 entries: 14 open, 7 partial, 28 blocked, 582 done.
+`TODO/INDEX.md` holds 631 entries: 1 open, 7 partial, 28 blocked, 595 done.
 
 ## State
 
@@ -59,7 +59,7 @@ not wait for a larger one.
    The entries that stay (P1 first, then P2, then P3):
    - The findings of the QA pass of `v0.4.0-beta.19` (#713 to #751): each is done (the last three by the take of podcrates `v0.86.0`).
    - The findings of the QA pass of `v0.4.0-beta.20` (#761 to #775): each is done.
-   - The findings of the QA pass of `v0.4.0-beta.21` (#786 to #798): T-620 to T-632; the release of beta.21 waits for each P2 one.
+   - The findings of the QA pass of `v0.4.0-beta.21` (#786 to #798): each is done.
    - CI: T-316 (partial: the stand-in runs in ci; its QUIC leg waits for `PodUtils/podnet@7fe60e0:src/cloudflare/`, frozen).
    - WARP: T-210 (blocked: a device with a paid licence).
    - the donor review (GitHub #429 to #434): done, except #435: T-244 (partial: `tunnel --inspect` is built and measured; the gaps of the hook wait for COORD-136 #781).

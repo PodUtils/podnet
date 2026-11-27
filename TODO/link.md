@@ -2272,7 +2272,7 @@ The rules of the issue that apply to this row:
 ## Premise
 
 - `serve` takes `--local` and `--ingress` (`crates/podnet-serve/src/ingress.rs`, `src/cli/cmd/serve.rs`). `--at` does not exist.
-- The ruling "Way out and way in" (2026-11-11, T-060) set `--ingress tunnel|relay|none` as the road to the visitors of `serve`. The flag `--via` is gone (`src/cli/help.rs:242`).
+- The ruling "Way out and way in" (2026-11-11, T-060) set `--ingress tunnel|relay|none` as the road to the visitors of `serve`. The flag `--via` is gone (`src/cli/help.rs:247`).
 - Read on 2026-11-12 at 505dfa0. Nothing was built or measured for this entry.
 
 ## Approach
@@ -2645,7 +2645,7 @@ The rules of the issue that apply to this row:
 ## Premise
 
 - The chain exists: `--egress` and `UpstreamChain` (`crates/podnet-vnet/src/dialer.rs:153`, `docs/egress.md`).
-- A flaw in the issue: it says "`--via` is an alias for the existing `--egress`". The flag `--via` is gone (`src/cli/help.rs:242`), by the ruling "Way out and way in" of 2026-11-11.
+- A flaw in the issue: it says "`--via` is an alias for the existing `--egress`". The flag `--via` is gone (`src/cli/help.rs:247`), by the ruling "Way out and way in" of 2026-11-11.
 - Read on 2026-11-12 at 505dfa0. Nothing was built or measured for this entry.
 
 ## Approach
