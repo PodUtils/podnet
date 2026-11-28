@@ -1,6 +1,6 @@
 # Handoff
 
-The product work state at 2026-11-28 02:00 (UTC). Start a hosted checkout with
+The product work state at 2026-11-28 03:26 (UTC). Start a hosted checkout with
 [TODO/RESUME.md](../TODO/RESUME.md). Remove this file when the lead session has no unfinished step.
 
 ## The goal
@@ -13,6 +13,13 @@ off the release).
 
 ## Where the code is
 
+* All finished work is on `main` (`98c3b28`): `ci` `46099424348` (all 13 jobs green, including `test`, `features`,
+  `no-loopback`, `restricted-host`, `c-abi`, `static x86_64/aarch64`), `deny` `46099424169`, `secrets` `46099424353`,
+  and `issue-sync` `46099424501` all passed; `#140`, `#151`, and `#407` are closed. On `live` `46099424183` (attempt 1),
+  every functional step passed (`warp proxy --l4`: `colo=IAD warp=on`, 20 MB HTTP 200 at `103.78 MB/s`; benchmark
+  `podnet` 114.76 rps / 33.51 ms p50 vs `cloudflared` 61.56 rps / 67.87 ms p50; `docs/quic.md` `tuic-server v1.5.2`
+  both passed), with only external `forge.web.pkgforge.dev` HTTP 403 (attempt 1) and quick-tunnel 429 rate-limit on
+  back-to-back rerun (attempt 2); the next scheduled or post-cooldown `live` run will confirm green cleanly.
 * `TODO/INDEX.md`: 631 entries — **0 open, 6 partial, 24 blocked, 601 done**.
 * Newest release: `v0.4.0-beta.21` (tag at `3d04883`; COORD-143 #801; manifest list digest
   `sha256:7b07bc89c549d48bfeeaf28794e5186a5d8cd6d4978a63bae62fbf7a411534a5`).
