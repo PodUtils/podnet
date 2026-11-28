@@ -121,9 +121,13 @@ others). It reads the variables `PODNET_WARP_API`, `PODNET_WARP_CC`, `PODNET_WAR
 * `warp proxy --l4` (`PODNET_WARP_L4`): each TCP client is one HTTP/3
   `CONNECT` stream to the L4 door of WARP (UDP 443, TLS name of `--l4-sni`,
   `consumer-masque-proxy.cloudflareclient.com`), with no IP stack in
-  between. UDP (SOCKS5 UDP ASSOCIATE) is not served. The rules apply (`-r`,
-  `--rules-file`, `--rule-default`): a `cidr:` rule decides an address, and a
-  name with no other rule takes `--rule-default`.
+  between. Stream 0 opens a `cf-connect-ip` session bootstrap first; each
+  TCP flow then sends an IP-literal `:authority` on its own `CONNECT`
+  stream, resolving domain targets over DoH through the L4 door (honoring
+  `--resolve` pins first) with no host DNS leak. UDP (SOCKS5 UDP ASSOCIATE)
+  is not served. The rules apply (`-r`, `--rules-file`, `--rule-default`): a
+  `cidr:` rule decides an address, and a name with no other rule takes
+  `--rule-default`.
 * `--transport wireguard` (a flag of `podnet warp`, before or after the subcommand; `PODNET_WARP_TRANSPORT`): the tunnel on
   WireGuard (UDP, port 2408 of the record, or `--wireguard-endpoint`) in
   place of MASQUE. The device is the one of `podnet warp export`

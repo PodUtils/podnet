@@ -268,10 +268,22 @@ pub fn run(live: Arc<super::Live<WarpStack>>, bound: Bound) -> WarpProxy {
     serve_on(over(live), bound)
 }
 
+/// Fixed tunnel wrapper exposing [`super::l4::L4`] as a `pod_warp::proxy::Tunnel`.
+struct FixedL4(Arc<super::l4::L4>);
+
+impl Tunnel for FixedL4 {
+    fn session(&self) -> BoxFuture<'_, std::result::Result<Arc<dyn Dial>, Failure>> {
+        let dial: Arc<dyn Dial> = self.0.clone();
+        Box::pin(async move { Ok(dial) })
+    }
+}
+
 /// Accept proxy clients on `bound` and connect each one with its own
 /// HTTP/3 CONNECT through the L4 door (issue 140). UDP is not served.
-pub fn run_l4(l4: Arc<pod_warp::L4>, bound: Bound) -> WarpProxy {
-    serve_on(with_values(Proxy::over_l4(l4, direct())), bound)
+pub fn run_l4(l4: Arc<super::l4::L4>, bound: Bound) -> WarpProxy {
+    let mut proxy = Proxy::new(Arc::new(FixedL4(l4)), direct());
+    proxy.l4 = true;
+    serve_on(with_values(proxy), bound)
 }
 
 /// [`bind`] and [`run`] for one listener.

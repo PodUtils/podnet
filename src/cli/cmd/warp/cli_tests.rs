@@ -127,8 +127,21 @@ fn warp_license_and_status_fields() {
     assert_eq!(plain_value(&serde_json::Value::Null), "-");
     let free = serde_json::json!({"account_type": "free", "warp_plus": true});
     assert_eq!(podnet::warp::identity::warp_plus_label(&free), "no");
+    let limited_empty = serde_json::json!({"account_type": "limited"});
+    assert_eq!(
+        podnet::warp::identity::warp_plus_label(&limited_empty),
+        "no"
+    );
     let plus = serde_json::json!({"account_type": "limited", "premium_data": 10});
     assert_eq!(podnet::warp::identity::warp_plus_label(&plus), "yes");
+    let unlimited = serde_json::json!({"account_type": "unlimited"});
+    assert_eq!(podnet::warp::identity::warp_plus_label(&unlimited), "yes");
+    let team = serde_json::json!({"account_type": "team"});
+    assert_eq!(podnet::warp::identity::warp_plus_label(&team), "yes");
+    let premium = serde_json::json!({"account_type": "premium"});
+    assert_eq!(podnet::warp::identity::warp_plus_label(&premium), "yes");
+    let unknown = serde_json::json!({"account_type": "enterprise"});
+    assert_eq!(podnet::warp::identity::warp_plus_label(&unknown), "no");
 }
 
 // #627: the hint of warp scan is a command that parses as printed.

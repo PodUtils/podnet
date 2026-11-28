@@ -427,23 +427,19 @@ impl WarpClient {
     /// The L4 door of `warp proxy --l4` (issue 140): the front door of the
     /// device (or `--masque-endpoint`), the TLS name `sni`, the client
     /// certificate and the pinned key.
-    pub fn l4(&self, sni: &str) -> Result<pod_warp::L4> {
+    pub fn l4(&self, sni: &str) -> Result<l4::L4> {
         let mut masque = self.masque.clone();
         masque.h3 = true;
         let settings = Self::settings_of(self.proxy.as_ref(), &masque, None, None);
-        let warp = pod_warp::Warp::from_parts(
-            settings,
-            self.warp.device().clone(),
-            self.warp.identity().clone(),
-        );
-        let mut door = warp.l4().warped()?.with_sni(sni);
-        if let Some(value) = std::env::var(l4::FORM_VARIABLE)
-            .ok()
-            .filter(|v| !v.is_empty())
-        {
-            door = door.with_form(pod_warp::l4::Form::parse(&value).warped()?);
-        }
-        Ok(door)
+        let form = std::env::var(l4::FORM_VARIABLE).ok();
+        l4::L4::from_device(
+            self.device(),
+            self.identity(),
+            provider(),
+            &settings.door,
+            sni,
+            form.as_deref(),
+        )
     }
 
     /// True when the tunnel goes on WireGuard.

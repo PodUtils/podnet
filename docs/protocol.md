@@ -309,8 +309,14 @@ IPv6 address in `2606:4700:110::/48`).
 * The `PATCH` answer lists the endpoint ports
   `[443, 500, 1701, 4500, 4443, 8443, 8095]` (measured, podssh issue 63).
   podnet uses 443 only (`register::MASQUE_PORT`).
-* The newer L4 proxy mode of the front door is HTTP/3 only (read, podssh
-  issue 63). podnet uses CONNECT-IP over HTTP/2.
+* The L4 proxy mode of the front door (`consumer-masque-proxy.cloudflareclient.com`)
+  is HTTP/3 only (measured against official `cloudflare-warp` 2026.8.2115.0;
+  `docs/reports/warp-client-capture-2026-11-27.md`). Stream 0 sends an extended
+  `CONNECT` (`:protocol cf-connect-ip`, `:scheme http`, `:authority cloudflareaccess.com`,
+  `:path /`, `cf-client-version`); subsequent streams carry plain RFC 9114 `CONNECT`
+  with IP-literal `:authority` and raw TCP payload in `DATA` frames. `podnet warp
+  proxy --l4` speaks this mode directly; `podnet warp` uses CONNECT-IP over HTTP/2
+  or HTTP/3 (`--masque-transport h3`).
 * `smoltcp` owns the tunnel address and runs TCP and UDP on it. This is
   `podnet::warp::WarpStack`.
 

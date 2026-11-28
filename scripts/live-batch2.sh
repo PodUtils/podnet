@@ -271,33 +271,20 @@ down=$(curl -sS -o /dev/null -w '%{http_code} %{speed_download}' --max-time 60 -
 echo "h2 download 20 MB: HTTP ${down%% *}, $(echo "${down#* }" | awk '{ printf "%.2f MB/s", $1 / 1e6 }')"
 kill "$pid" 2> /dev/null || true
 
-echo "== warp proxy --l4 (issue 140; a report, not a check yet)"
-# A plain CONNECT got 403 with both names (live run 41635661105): each
-# form of the request, with each name.
-for form in plain extended header; do
-for sni in consumer-masque-proxy.cloudflareclient.com consumer-masque.cloudflareclient.com; do
-    echo "l4 form $form:"
-    PODNET_WARP_L4_FORM=$form "$podnet" warp --identity "$dir/a.json" proxy --l4 --l4-sni "$sni" --listen tcp://127.0.0.1:40017 --run-for 40 > "$dir/l4.log" 2>&1 &
-    lpid=$!
-    pids="$pids $lpid"
-    i=0
-    until grep -q "warp proxy  tcp" "$dir/l4.log" 2> /dev/null || ! kill -0 "$lpid" 2> /dev/null; do
-        i=$((i + 1)); [ "$i" -lt 60 ] || break
-        sleep 1
-    done
-    if grep -q "warp proxy  tcp" "$dir/l4.log"; then
-        out=$(curl -sS --max-time 30 -x socks5h://127.0.0.1:40017 https://one.one.one.one/cdn-cgi/trace 2>&1 | grep -E '^(warp|colo)=|curl' | tr '\n' ' ')
-        echo "l4 $sni: $out"
-        down=$(curl -sS -o /dev/null -w '%{http_code} %{speed_download}' --max-time 45 -x socks5h://127.0.0.1:40017 'https://speed.cloudflare.com/__down?bytes=20000000') || true
-        echo "l4 $sni download 20 MB: HTTP ${down%% *}, $(echo "${down#* }" | awk '{ printf "%.2f MB/s", $1 / 1e6 }')"
-    else
-        echo "l4 $sni: the door did not open"
-    fi
-    sed -E 's/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|t\.[0-9a-f-]{8,}/<id>/g' "$dir/l4.log" | grep -iE 'error|refused|podnet: ' | tail -3
-    kill "$lpid" 2> /dev/null || true
-    wait "$lpid" 2> /dev/null || true
-done
-done
+echo "== warp proxy --l4 (issue 140)"
+"$podnet" warp --identity "$dir/a.json" proxy --l4 --listen tcp://127.0.0.1:40017 --run-for 60 > "$dir/l4.log" 2>&1 &
+lpid=$!
+pids="$pids $lpid"
+wait_port 40017 "$dir/l4.log"
+l4_trace=$(curl -sS --max-time 30 -x socks5h://127.0.0.1:40017 https://one.one.one.one/cdn-cgi/trace)
+echo "$l4_trace" | grep -q 'warp=on' || { echo "l4 trace missing warp=on"; echo "$l4_trace"; exit 1; }
+echo "l4 trace: $(echo "$l4_trace" | grep -E '^(warp|colo)=' | tr '\n' ' ')"
+down=$(curl -sS -o /dev/null -w '%{http_code} %{speed_download}' --max-time 45 -x socks5h://127.0.0.1:40017 'https://speed.cloudflare.com/__down?bytes=20000000')
+l4_code=${down%% *}
+echo "l4 download 20 MB: HTTP ${l4_code}, $(echo "${down#* }" | awk '{ printf "%.2f MB/s", $1 / 1e6 }')"
+[ "$l4_code" = "200" ] || { echo "l4 download failed: HTTP $l4_code"; exit 1; }
+kill "$lpid" 2> /dev/null || true
+wait "$lpid" 2> /dev/null || true
 
 echo "== the WireGuard leg (issue 152; a report, not a check yet)"
 if "$podnet" warp --transport wireguard probe > "$dir/wgp.out" 2>&1; then
