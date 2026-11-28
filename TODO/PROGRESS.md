@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 631 entries: 0 open, 6 partial, 27 blocked, 598 done.
+`TODO/INDEX.md` holds 631 entries: 0 open, 6 partial, 24 blocked, 601 done.
 
 ## State
 
@@ -23,11 +23,17 @@
 - Post-beta.21 on `main`: T-367 (GitHub #486, MASQUE `QUIC-1` to `QUIC-5`), T-368 (GitHub #489, all six third-party
   road and `status` dependency capabilities; upstream `pod-services` `irc` + multi-vantage watch asked in COORD-145
   #803), T-221 step 4 (`scripts/live-bench-compare.sh` in `live.yml`), T-247 (NetBird netstack on a proxy-only host
-  plus `podnet pod` `netbird:[PORT]` fix), COORD-144 (#802, T-414 + T-488 asks to podcrates), and GitHub #89 test
-  guide refresh. T-374 (#497) and T-375 (#498) stay blocked.
-- Hard-problems fixes (`docs/research/podnet/hard-problems-results.md`, `4df28952`): T-507 (H-02), T-508 (H-04), T-509
-  (H-05), H-10 (`docs/warp.md`), H-11 (`scripts/live-throughput.sh`), and H-19 (`tests/transfer_relay.rs` `160 KiB` cap
-  test move; T-476 done in `v0.86.0`).
+  plus `podnet pod` `netbird:[PORT]` fix), COORD-144 (#802, T-414 + T-488 asks to podcrates), GitHub #89 test
+  guide refresh, the hermetic four-layer client capture rig (`scripts/capture-rig/`, `docs/capture-rig.md`,
+  `tests/capture_rig.rs`), T-002 (GitHub #140, `warp proxy --l4` Stream 0 `cf-connect-ip` bootstrap + DoH-over-L4
+  IP-literal `CONNECT`, verified live `warp=on` + 20 MB HTTP 200), T-004 (GitHub #151, pure-Rust `ring` HPKE ECH
+  via `pod-tls`/`pod-dns`/`pod-proxy`/`pod-ws` `features = ["ech"]`, `--ech`/`--ech-grease`, `doctor` ECH status),
+  T-210 (GitHub #407, closed `WarpAccount` paid types in `warp_plus_label`), and COORD-146 (#804, syncing L4 and
+  `warp_plus_label` into `pod-warp`). T-374 (#497) and T-375 (#498) stay blocked.
+- Hard-problems fixes (`docs/research/podnet/hard-problems-results.md`): T-507 (H-02), T-508 (H-04), T-509 (H-05),
+  T-247 (H-09), H-10 (`docs/warp.md`), H-11 (`scripts/live-throughput.sh`, COORD-144), T-002 (H-13 / `#140`),
+  T-004 (H-14 / `#151`), H-19 (`tests/transfer_relay.rs` `160 KiB` cap test move; T-476 done in `v0.86.0`), and
+  T-210 (H-31 / `#407`).
 - The goal (the owner, 2026-11-13): close each issue except the deferred ones, then a final complete beta. The takes
   follow the plan of podcrates (PodUtils/podcrates#133; `docs/decisions.md`, 2026-11-13).
 - Keep this section short. Write the current state only; git keeps the history.
@@ -66,7 +72,6 @@ not wait for a larger one.
    - The findings of the QA pass of `v0.4.0-beta.20` (#761 to #775): each is done.
    - The findings of the QA pass of `v0.4.0-beta.21` (#786 to #798): each is done.
    - CI: T-316 (partial: the stand-in runs in ci; its QUIC leg waits for `PodUtils/podnet@7fe60e0:src/cloudflare/`, frozen).
-   - WARP: T-210 (blocked: a device with a paid licence).
    - the donor review (GitHub #429 to #434): done, except #435: T-244 (partial: `tunnel --inspect` is built and measured; the gaps of the hook wait for COORD-136 #781).
    - open and partial follow-ups (`TODO/fixes.md`):
      T-478 and T-406 (blocked, #604), T-488, T-414 and T-415

@@ -1,5 +1,7 @@
 # Hard problems of podnet
 
+> **Current status:** This file is the baseline problem catalog from 2026-11-20 (`v0.4.0-beta.17`). For current resolution status as of 2026-11-27 (`v0.4.0-beta.21`+, including solved `H-09`, `H-13`/`#140`, `H-14`/`#151`, `H-31`/`#407`), see [hard-problems-results.md](hard-problems-results.md).
+
 State of 2026-11-20. Repository `PodUtils/podnet`, release `v0.4.0-beta.17`, shared crates of `PodUtils/podcrates` at
 the tag `v0.78.1`. This report lists each open problem that is blocked, stuck, unsolved, partial for a long time,
 failed more than once, or called hard, impossible, a limit or unmeasured by the record or the documents. Each item

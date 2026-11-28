@@ -19,6 +19,8 @@ docs/build.md c35416886a live-manual a build and the tests from the source tree:
 docs/build.md 8c15cc5283 live-manual a build of podnet-capi from the source tree: fetches crates; ci.yml runs it
 docs/build.md 752a049c77 live-manual cargo-fuzz and a nightly toolchain: fetches them; fuzz.yml runs it
 
+docs/capture-rig.md 75ee22be36 live-manual needs Docker and internet access to capture official third-party clients; offline self-test runs in tests/capture_rig.rs
+
 docs/cli.md adfc11c729 skip a reference list: the last three lines have the placeholder `...`
 docs/cli.md 071c676c5c scenario [needs jq] ./site, and a config.yml with a file server of the loopback as its origin
 

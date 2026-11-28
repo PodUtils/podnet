@@ -9,9 +9,9 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | Issue | Subject | State | Entries |
 | --- | --- | --- | --- |
 | #89 | tracking: dev work in a sandbox with basic networking, and launch once and forget | open (deferred: the tracking issue of the owner) | T-001 |
-| #140 | warp proxy: add --l4, one HTTP/3 CONNECT per flow, no IP stack | open (deferred: a captured request of an official client) | T-002 |
+| #140 | warp proxy: add --l4, one HTTP/3 CONNECT per flow, no IP stack | closed: T-002 done (`ae09cb3`, `465bc0f`, official `cloudflare-warp` 2026.8.2115.0 capture + Stream 0 `cf-connect-ip` bootstrap + DoH-over-L4 IP-literal `CONNECT`, verified live `warp=on` + 20 MB HTTP 200; COORD-146 `#804`) | T-002 |
 | #149 | warp: enrol through a Zero Trust team token | open (deferred: a captured exchange of the official client) | T-003 |
-| #151 | tls: send an encrypted ClientHello on the hops that publish a config | open (deferred: no HPKE in ring, no ECH config on the hops) | T-004 |
+| #151 | tls: send an encrypted ClientHello on the hops that publish a config | closed: T-004 done (`715720c`, `pod-tls`/`pod-dns`/`pod-proxy`/`pod-ws` `features = ["ech"]` pure-Rust `ring` HPKE, `src/ech.rs`, `--ech`/`--ech-grease`, `doctor` ECH status, `tests/ech.rs`) | T-004 |
 | #161 | Publish the library and the CLI on crates.io (deferred) | open (deferred: publish nothing now) | T-005, T-007 |
 | #222 | crates.io: the workspace version is a prerelease, and the beta requirement cannot match a stable pod-netns | open (deferred: the first stable release) | T-006 |
 | #224 | crates.io: the crate name cfrs is registered to another project | closed (the owner chose and reserved `podnet`; the publish is #161, with T-007) | T-016 |
@@ -103,7 +103,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #404 | static: `+` decoded differently (one more divergence) | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-207 |
 | #405 | warp up --tun drops --replace and others | closed (ci 42641451152, live 42641450984 at e784949) | T-208 |
 | #406 | warp status never names warp-tun | closed (ci 42641451152, live 42641450984 at e784949) | T-209 |
-| #407 | warp: every type but "free" reads as WARP+ (partly) | open | T-210 |
+| #407 | warp: every type but "free" reads as WARP+ (partly) | closed: T-210 done (`465bc0f`, official `cloudflare-warp` 2026.8.2115.0 `WarpAccount` enum capture + closed paid set in `src/warp/identity.rs` + tests; COORD-146 `#804`) | T-210 |
 | #408 | warp down removes the fish file without an owner check | closed (ci 42641451152, live 42641450984 at e784949) | T-211 |
 | #409 | README says --l4 ignores rules; code applies them | closed (ci 42638635724, live 42638635442 at dbfcfd6) | T-212 |
 | #410 | WireGuard endpoint: v6 and ports unread | closed (ci 42641451152, live 42641450984 at e784949) | T-213 |
@@ -488,5 +488,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #801 | COORD-143: podnet v0.4.0-beta.21 is out: the files, their SHA-256 and the image by digest (to all) | open (a COORD issue between sessions) | none |
 | #802 | COORD-144: pod-warp idle MASQUE reset detection (T-414) and quick-tunnel ha_connections default (T-488) (to podcrates) | open (a COORD issue between sessions; the upstream asks of T-414 and T-488) | none |
 | #803 | COORD-145: pod-services irc road entry and multi-vantage watch schedule for third-party roads (T-368, #489) (to podcrates) | open (a COORD issue between sessions; the upstream asks of T-368) | none |
+| #804 | COORD-146: pod-warp L4 Stream 0 cf-connect-ip bootstrap (#140) and WarpAccount paid types (#407) (to podcrates) | open (a COORD issue between sessions; the upstream asks of T-002 and T-210) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556, #557 and #680 to #684 are closed; they are pull requests.

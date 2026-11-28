@@ -175,6 +175,14 @@ SYNOPSIS
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -444,6 +452,14 @@ podnet tunnel
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -615,6 +631,14 @@ podnet tunnel inspect
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -744,6 +768,14 @@ podnet tunnel inspect list
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -877,6 +909,14 @@ podnet tunnel inspect show
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -1012,6 +1052,14 @@ podnet tunnel inspect replay
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -1141,6 +1189,14 @@ podnet tunnel inspect clear
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -1394,6 +1450,14 @@ podnet serve
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -1649,6 +1713,14 @@ podnet share
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -1730,6 +1802,14 @@ podnet git
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -1937,6 +2017,14 @@ podnet git serve
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -2022,6 +2110,14 @@ podnet git init
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -2088,6 +2184,14 @@ podnet git urls
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -2150,6 +2254,14 @@ podnet forge
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -2214,6 +2326,14 @@ podnet forge clone
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -2273,6 +2393,14 @@ podnet ci
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -2335,6 +2463,14 @@ podnet ci check
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -2448,6 +2584,14 @@ podnet send
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -2561,6 +2705,14 @@ podnet receive
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -2675,6 +2827,14 @@ podnet connect
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -2761,6 +2921,14 @@ podnet expose
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -2870,6 +3038,14 @@ podnet forward
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -3027,6 +3203,14 @@ podnet route
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -3207,6 +3391,14 @@ podnet ssh-relay
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -3293,6 +3485,14 @@ podnet sidecar
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -3354,6 +3554,14 @@ podnet sidecar probe
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -3414,6 +3622,14 @@ podnet sidecar search
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -3472,6 +3688,14 @@ podnet sidecar run
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -3527,6 +3751,14 @@ podnet sidecar split
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -3584,6 +3816,14 @@ podnet sidecar faketcp
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -3639,6 +3879,14 @@ podnet sidecar bond
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -3708,6 +3956,14 @@ podnet bench
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -3777,6 +4033,14 @@ podnet exit
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -3836,6 +4100,14 @@ podnet ports
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -3897,6 +4169,14 @@ podnet components
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -3960,6 +4240,14 @@ podnet bug-report
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -4027,6 +4315,14 @@ podnet completions
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -4094,6 +4390,14 @@ podnet update
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -4163,6 +4467,14 @@ podnet qr
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -4320,6 +4632,14 @@ podnet demo
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -4404,6 +4724,14 @@ podnet net
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -4458,6 +4786,14 @@ podnet net demo
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -4520,6 +4856,14 @@ podnet net doctor
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -4601,6 +4945,14 @@ podnet net shim
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -4659,6 +5011,14 @@ podnet net addresses
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -4784,6 +5144,14 @@ podnet net proxy
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -4890,6 +5258,14 @@ podnet net switch
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -4968,6 +5344,14 @@ podnet net tailscale
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -5039,6 +5423,14 @@ podnet net socksify
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -5111,6 +5503,14 @@ podnet net passwd-shim
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -5181,6 +5581,14 @@ podnet net ts-shims
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -5382,6 +5790,14 @@ podnet warp
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -5521,6 +5937,14 @@ podnet warp register
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -5662,6 +6086,14 @@ podnet warp status
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -5810,6 +6242,14 @@ podnet warp license
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -5949,6 +6389,14 @@ podnet warp rotate
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -6088,6 +6536,14 @@ podnet warp delete
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -6230,6 +6686,14 @@ podnet warp probe
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -6376,6 +6840,14 @@ podnet warp exit
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -6543,6 +7015,14 @@ podnet warp export
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -6698,6 +7178,14 @@ podnet warp scan
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -6878,6 +7366,14 @@ podnet warp forward
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -7102,6 +7598,14 @@ podnet warp proxy
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -7289,6 +7793,14 @@ podnet warp up
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -7443,6 +7955,14 @@ podnet warp down
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -7589,6 +8109,14 @@ podnet warp env
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -7780,6 +8308,14 @@ podnet warp exec
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -7941,6 +8477,14 @@ podnet warp shell
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -8104,6 +8648,14 @@ podnet warp nc
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -8263,6 +8815,14 @@ podnet warp ssh-config
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -8445,6 +9005,14 @@ podnet warp tun
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -8594,6 +9162,14 @@ podnet warp h3
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -8753,6 +9329,14 @@ podnet warp run
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -8828,6 +9412,14 @@ podnet wg
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -8909,6 +9501,14 @@ podnet wg serve
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -8978,6 +9578,14 @@ podnet relay
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -9039,6 +9647,14 @@ podnet relay pair
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -9155,6 +9771,14 @@ podnet relay node
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -9278,6 +9902,14 @@ podnet relay connect
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -9348,6 +9980,14 @@ podnet relay stop
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -9415,6 +10055,14 @@ podnet derp
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -9523,6 +10171,14 @@ podnet derp node
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -9602,6 +10258,14 @@ podnet derp connect
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -9722,6 +10386,14 @@ podnet link
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -9974,6 +10646,14 @@ podnet link listen
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -10189,6 +10869,14 @@ podnet link dial
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -10471,6 +11159,14 @@ podnet link connect
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -10564,6 +11260,14 @@ podnet link status
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -10639,6 +11343,14 @@ podnet link mesh
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -10704,6 +11416,14 @@ podnet link close
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -10768,6 +11488,14 @@ podnet link reconnect
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -10830,6 +11558,14 @@ podnet link rotate
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -10902,6 +11638,14 @@ podnet link p2p
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -11047,6 +11791,14 @@ podnet link carriers
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -11124,6 +11876,14 @@ podnet offline
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -11186,6 +11946,14 @@ podnet offline spool
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -11250,6 +12018,14 @@ podnet offline spool add
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -11309,6 +12085,14 @@ podnet offline spool list
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -11370,6 +12154,14 @@ podnet offline spool take
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -11427,6 +12219,14 @@ podnet offline spool check
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -11487,6 +12287,14 @@ podnet offline discover
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -11555,6 +12363,14 @@ podnet offline discover announce
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -11617,6 +12433,14 @@ podnet offline discover listen
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -11676,6 +12500,14 @@ podnet offline bundle
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -11743,6 +12575,14 @@ podnet offline bundle build
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -11801,6 +12641,14 @@ podnet offline bundle apply
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -11859,6 +12707,14 @@ podnet offline bundle verify
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -11919,6 +12775,14 @@ podnet offline capture
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -11985,6 +12849,14 @@ podnet offline capture merge
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -12046,6 +12918,14 @@ podnet offline pair
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -12108,6 +12988,14 @@ podnet offline pair offer
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -12174,6 +13062,14 @@ podnet offline pair accept
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -12235,6 +13131,14 @@ podnet offline replica
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -12300,6 +13204,14 @@ podnet offline replica merge
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -12387,6 +13299,14 @@ podnet cover
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -12720,6 +13640,14 @@ podnet man
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -12793,6 +13721,14 @@ podnet status
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -12862,6 +13798,14 @@ podnet host
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -12925,6 +13869,14 @@ podnet host probe
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -12996,6 +13948,14 @@ podnet stat
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -13057,6 +14017,14 @@ podnet rules
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -13121,6 +14089,14 @@ podnet rules check
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -13182,6 +14158,14 @@ podnet init
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -13244,6 +14228,14 @@ podnet init generate
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -13305,6 +14297,14 @@ podnet init check
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -13376,6 +14376,14 @@ podnet init enroll
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -13439,6 +14447,14 @@ podnet harness
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -13537,6 +14553,14 @@ podnet doctor
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -13644,6 +14668,14 @@ podnet autostart
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -13714,6 +14746,14 @@ podnet autostart add
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -13775,6 +14815,14 @@ podnet autostart remove
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -13833,6 +14881,14 @@ podnet autostart list
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -13895,6 +14951,14 @@ podnet autostart run
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -13958,6 +15022,14 @@ podnet agent
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -14022,6 +15094,14 @@ podnet agent up
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -14081,6 +15161,14 @@ podnet agent down
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -14138,6 +15226,14 @@ podnet agent status
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -14194,6 +15290,14 @@ podnet ps
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -14260,6 +15364,14 @@ podnet stop
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -14326,6 +15438,14 @@ podnet logs
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -14386,6 +15506,14 @@ podnet wait
     --resolve HOST=IP
         Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
         adds to it. TLS still checks the name of the certificate.
+    --ech VALUE
+        TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+        base64 ECHConfigList. PODNET_ECH sets the same value. Variable:
+        PODNET_ECH.
+    --ech-grease
+        Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+        ECHConfigList applies. PODNET_ECH_GREASE sets the same flag. Variable:
+        PODNET_ECH_GREASE.
     -q, --quiet
         Log warnings and errors only.
     -v, --verbose
@@ -14419,6 +15547,21 @@ ENVIRONMENT
       to it. Without a pin, podnet asks the system resolver, then DNS over
       HTTPS at 1.1.1.1, 1.0.0.1, 8.8.8.8 and 8.8.4.4. A bad value is a
       configuration error (exit 78) for each command. Used by: all commands.
+  PODNET_ECH
+      The value of --ech: off (the default), auto, on, strict, or a base64
+      ECHConfigList. auto and on seal the TLS ClientHello when an HTTPS DNS
+      record gives an ECH list, and fall back to plain TLS on refusal. strict
+      sends no plain ClientHello. Used by: all commands.
+  PODNET_ECH_GREASE
+      Set to true or 1: the value of --ech-grease. Send a GREASE ECH extension
+      in TLS 1.3 ClientHellos when no ECHConfigList applies. Used by: all
+      commands.
+  PODNET_ECH_FRONT
+      Optional outer front host name that caches an explicit base64
+      ECHConfigList from PODNET_ECH or --ech. Used by: all commands.
+  PODNET_ECH_HOPS
+      The hops that use ECH and that podnet doctor checks: a comma list of api,
+      edge, masque, or all (the default). Used by: all commands.
   PODNET_TAILNET
       The tailnet that tailscaled must run in, in place of --tailnet: the name
       or the DNS suffix. The door starts only when the daemon is Running in it,
@@ -15519,7 +16662,7 @@ podnet man                                      # the manual
 | File server, transfer, git | `serve`, `share`, `git` | Serve a directory, receive or send files with a PIN, host git repositories; HTTPS on a public port with a certificate of ACME (`--acme`). | [serve](https://github.com/PodUtils/podnet/blob/main/docs/serve.md) |
 | Transfer by code | `send`, `receive`, `send --words`, `--relay-pair`, `--derp`, `--piping` | A file, a directory or a text to another host with a short code, as magic-wormhole does: a public mailbox for the code, the bytes direct or through a transit relay (from podnet to podnet also the podnet relay, a DERP server or a piping server), sealed end to end. | [transfer](https://github.com/PodUtils/podnet/blob/main/docs/transfer.md) |
 | Publish by one word | `expose` | Publish a local service by a tunnel, the relay or a virtual address. | [forward](https://github.com/PodUtils/podnet/blob/main/docs/forward.md) |
-| WARP | `warp register`, `proxy`, `forward`, `run`, `up`, `env`, `exec`, `shell`, `nc`, `tun`, `export`, `scan` | The Cloudflare WARP client on TCP 443, with no root and no TUN. | [warp](https://github.com/PodUtils/podnet/blob/main/docs/warp.md) |
+| WARP | `warp register`, `proxy`, `proxy --l4`, `forward`, `run`, `up`, `env`, `exec`, `shell`, `nc`, `tun`, `export`, `scan`, `h3` | The Cloudflare WARP client on TCP 443 and UDP 443 (`--masque-transport h3`, `--l4` per-flow HTTP/3 CONNECT, `--masque-endpoint`), with no root and no TUN. | [warp](https://github.com/PodUtils/podnet/blob/main/docs/warp.md) |
 | Pods | `pod`, `pod doctor`, `pod --report`, `pod --backend netns\|netns-kernel\|seccomp`, `pod --allow-raw icmp` | Run a program with all its traffic sent through a proxy chain, with rules, audit and a JSON report. | [pods](https://github.com/PodUtils/podnet/blob/main/docs/pods.md) |
 | Virtual networks | `net proxy`, `switch`, `shim`, `doctor`, `doctor --network` | IP addresses for programs on a host that refuses `AF_INET` binds. | [networks](https://github.com/PodUtils/podnet/blob/main/docs/networks.md) |
 | Overlays | `net tailscale`, `net socksify`, `netbird:`, `wg:`, `wg serve` | Tailscale, NetBird and WireGuard on a host with no TUN; a userspace WireGuard server for a list of peers. | [networks](https://github.com/PodUtils/podnet/blob/main/docs/networks.md) |
@@ -15527,11 +16670,11 @@ podnet man                                      # the manual
 | Forwards | `forward -L`, `forward --dns`, `forward --name`, `forward --network warp` | TCP and UDP forwards and a DNS door through a network; names on 127.0.0.0/8 for a client that takes only HOST:PORT. | [forward](https://github.com/PodUtils/podnet/blob/main/docs/forward.md) |
 | Exit on stdio | `exit --stdio` | One SOCKS5 session (CONNECT, and UDP in frames) on stdin and stdout, with no listener, for a pipe such as ssh. | [proxies](https://github.com/PodUtils/podnet/blob/main/docs/proxies.md) |
 | Relays | `relay pair`, `node`, `connect`, `--resume`, `--seal`, `derp node`, `derp connect`, `ssh-relay` | Inbound TCP to a host with outbound HTTPS only, sessions past the limits of the relay (`--resume`), sealed end to end (`--seal`); two hosts that meet at a DERP server by a `derp:` ticket, sealed and resumable; an SSH forward relay. | [relay](https://github.com/PodUtils/podnet/blob/main/docs/relay.md) |
-| Link | `link listen`, `dial`, `connect`, `status`, `mesh`, `close`, `carriers`, `cover`, `peer:FP/SERVICE` | A link between two installs over a carrier (unix socket, memory; TCP with TLS, WebSocket, HTTP/2, QUIC, UDP with KCP, HTTP/1.1 polls, DNS, S3 and ICMP behind build features): each end proves its Ed25519 key, and an allow list (default deny) admits the peers. Services at a peer: `raw`, `socks5`, `http`, `exec:` and `exec-status:` (the exit status goes to `link dial --status`), and `ss` (a Shadowsocks server of the AEAD form, behind the build feature `ss`). A local SOCKS5 door to a peer (`link dial --service socks5 --listen`, `--resolve-at peer\|local`). Names for live links, query keys, chains of `--egress` before the carrier, link groups, a mesh (`--announce`, `link mesh`) and a control socket. `forward -L PORT=peer:FP/SERVICE` reaches a service of a peer. A C interface (`include/podnet.h`, a shared and a static library from `crates/podnet-capi`). | [link](https://github.com/PodUtils/podnet/blob/main/docs/link.md) |
+| Link | `link listen`, `dial`, `connect`, `status`, `mesh`, `close`, `carriers`, `carriers --third-party`, `cover`, `peer:FP/SERVICE` | A link between two installs over a carrier (unix socket, memory; TCP with TLS, WebSocket, HTTP/2, QUIC, UDP with KCP, WireGuard, HTTP/1.1 polls, DNS, S3, ICMP, NTP, SMTP and IMAP behind build features): each end proves its Ed25519 key, and an allow list (default deny) admits the peers. Services at a peer: `raw`, `socks5`, `http`, `exec:` and `exec-status:` (the exit status goes to `link dial --status`), and `ss` (a Shadowsocks server of the AEAD form, behind the build feature `ss`). A local SOCKS5 door to a peer (`link dial --service socks5 --listen`, `--resolve-at peer\|local`). Names for live links, query keys, chains of `--egress` before the carrier, link groups, a mesh (`--announce`, `link mesh`) and a control socket. `forward -L PORT=peer:FP/SERVICE` reaches a service of a peer. A C interface (`include/podnet.h`, a shared and a static library from `crates/podnet-capi`). | [link](https://github.com/PodUtils/podnet/blob/main/docs/link.md) |
 | Offline | `offline spool`, `discover`, `bundle`, `capture`, `pair`, `replica`; carriers `serial` and `hf` | A store and forward line for a host with no network: a spool that survives a kill, mDNS discovery with a signed record, a bundle and its delta, a capture merged with its secret redacted, a pairing code, a replication log that converges; AX.25 over a serial line and an ARDOP or VARA modem. | [offline](https://github.com/PodUtils/podnet/blob/main/docs/offline.md) |
-| Networks and `--egress` | `--egress`, `--proxy`, `--resolve` | One spec for each way out: direct, proxy URL, relay, `tailscale:`, `netbird:`, `wg:`, `devtunnel:` (a Dev Tunnels relay), `turn:` (UDP), `https:` (a proxy over TLS), `wstunnel:` (a wstunnel server), `vless://`, `ss://` and `wisp:` (a VLESS, a Shadowsocks or a Wisp server), `unix:`, `warp` and `warp:identity=FILE` (TCP and UDP through a WARP session, for `route` and `forward --network`), and a chain `TOP over BELOW` (`wg:FILE over warp`). | [egress](https://github.com/PodUtils/podnet/blob/main/docs/egress.md), [proxies](https://github.com/PodUtils/podnet/blob/main/docs/proxies.md) |
+| Networks and `--egress` | `--egress`, `--proxy`, `--resolve`, `--ech`, `--ech-grease` | One spec for each way out: direct, proxy URL, relay, `tailscale:`, `netbird:`, `wg:`, `devtunnel:` (a Dev Tunnels relay), `turn:` (UDP and TCP RFC 6062), `https:` (a proxy over TLS), `wstunnel:` (a wstunnel server), `vless://`, `ss://` and `wisp:` (a VLESS, a Shadowsocks or a Wisp server), `unix:`, `warp` and `warp:identity=FILE` (TCP and UDP through a WARP session, for `route` and `forward --network`), and a chain `TOP over BELOW` (`wg:FILE over warp`); optional TLS Encrypted ClientHello (`--ech`). | [egress](https://github.com/PodUtils/podnet/blob/main/docs/egress.md), [proxies](https://github.com/PodUtils/podnet/blob/main/docs/proxies.md) |
 | Background | `--detach`, `ps`, `logs`, `wait`, `stop`, `autostart` | Run a command in the background, restart it, start it at boot. | [background](https://github.com/PodUtils/podnet/blob/main/docs/background.md) |
-| Checks | `doctor`, `doctor --agent`, `doctor --shape`, `status`, `ports`, `components`, `bench`, `bug-report`, `agent up` | Test the host, the path to the edge and a way out. | [doctor](https://github.com/PodUtils/podnet/blob/main/docs/doctor.md) |
+| Checks | `doctor`, `doctor --agent`, `doctor --shape`, `status`, `ports`, `components`, `bench`, `bug-report`, `agent up` | Test the host, the path to the edge, ECH status, dependency health and a way out. | [doctor](https://github.com/PodUtils/podnet/blob/main/docs/doctor.md) |
 | Update | `update` | Replace the binary after a check of the signature. | [install](https://github.com/PodUtils/podnet/blob/main/docs/install.md) |
 | Manual | `man`, `--help --json`, `completions` | The manual, JSON help, the llms files, exit codes. | [cli](https://github.com/PodUtils/podnet/blob/main/docs/cli.md) |
 
@@ -15559,7 +16702,8 @@ GitHub runner on each push and each day.
 The column "Document" of the table above links the topic documents. More documents:
 
 * [docs/e2e.md](https://github.com/PodUtils/podnet/blob/main/docs/e2e.md): the end-to-end session, the hop table, the record layer and the compatibility path.
-* [docs/quic.md](https://github.com/PodUtils/podnet/blob/main/docs/quic.md): the HTTP/3 shape, the stock client, the TUIC and Juicity roads, the connection ID rotation and the migration fallback.
+* [docs/quic.md](https://github.com/PodUtils/podnet/blob/main/docs/quic.md): the HTTP/3 shape, MASQUE (`CONNECT-IP`, `CONNECT-UDP`, WebTransport, `--masque-endpoint`), the TUIC and Juicity roads, connection ID rotation and migration fallback.
+* [docs/capture-rig.md](https://github.com/PodUtils/podnet/blob/main/docs/capture-rig.md): the hermetic, idempotent client capture rig for official protocol verification.
 * [docs/library.md](https://github.com/PodUtils/podnet/blob/main/docs/library.md) and [docs/build.md](https://github.com/PodUtils/podnet/blob/main/docs/build.md): the Rust library, build and fuzz.
 * [docs/protocol.md](https://github.com/PodUtils/podnet/blob/main/docs/protocol.md): the edge protocol and the WARP protocol.
 * [docs/virtual-network.md](https://github.com/PodUtils/podnet/blob/main/docs/virtual-network.md): the shim, the stack and the switch.
@@ -15570,7 +16714,7 @@ The column "Document" of the table above links the topic documents. More documen
 * [crates/podnet-netns/README.md](https://github.com/PodUtils/podnet/blob/main/crates/podnet-netns/README.md): the pod backends.
 * [SECURITY.md](https://github.com/PodUtils/podnet/blob/main/SECURITY.md): how to report a vulnerability, what Cloudflare can see, what listens, where secrets are kept.
 * [docs/development.md](https://github.com/PodUtils/podnet/blob/main/docs/development.md) and [docs/maintenance.md](https://github.com/PodUtils/podnet/blob/main/docs/maintenance.md): the rules and the procedures for contributors.
-* [docs/hosted-sessions.md](https://github.com/PodUtils/podnet/blob/main/docs/hosted-sessions.md): setup for Claude Code and Codex.
+* [docs/hosted-sessions.md](https://github.com/PodUtils/podnet/blob/main/docs/hosted-sessions.md): setup for Claude Code, Codex, and Gemini / Antigravity Cloud.
 
 This README describes `main`. The notes in `docs/releases/` say what a tag has. `llms.txt` and
 `llms-full.txt` give the manual and the documents as plain text for agents.
@@ -17154,9 +18298,13 @@ others). It reads the variables `PODNET_WARP_API`, `PODNET_WARP_CC`, `PODNET_WAR
 * `warp proxy --l4` (`PODNET_WARP_L4`): each TCP client is one HTTP/3
   `CONNECT` stream to the L4 door of WARP (UDP 443, TLS name of `--l4-sni`,
   `consumer-masque-proxy.cloudflareclient.com`), with no IP stack in
-  between. UDP (SOCKS5 UDP ASSOCIATE) is not served. The rules apply (`-r`,
-  `--rules-file`, `--rule-default`): a `cidr:` rule decides an address, and a
-  name with no other rule takes `--rule-default`.
+  between. Stream 0 opens a `cf-connect-ip` session bootstrap first; each
+  TCP flow then sends an IP-literal `:authority` on its own `CONNECT`
+  stream, resolving domain targets over DoH through the L4 door (honoring
+  `--resolve` pins first) with no host DNS leak. UDP (SOCKS5 UDP ASSOCIATE)
+  is not served. The rules apply (`-r`, `--rules-file`, `--rule-default`): a
+  `cidr:` rule decides an address, and a name with no other rule takes
+  `--rule-default`.
 * `--transport wireguard` (a flag of `podnet warp`, before or after the subcommand; `PODNET_WARP_TRANSPORT`): the tunnel on
   WireGuard (UDP, port 2408 of the record, or `--wireguard-endpoint`) in
   place of MASQUE. The device is the one of `podnet warp export`
@@ -19406,6 +20554,28 @@ read (for example `/etc/ssl/certs/ca-certificates.crt`), and the Mozilla
 roots compiled into podnet. `podnet status` shows the roots in `tls_roots`. See
 `SECURITY.md`.
 
+## Encrypted ClientHello (ECH)
+
+TLS Encrypted ClientHello (RFC 9849) is off by default, so wire bytes stay
+unchanged until you turn it on.
+
+* `--ech VALUE` (or `PODNET_ECH`) sets the ECH mode: `off` (default), `auto`
+  or `on`, `strict`, or a base64 `ECHConfigList`.
+* With `auto` or `on`, podnet reads the target's `HTTPS` DNS record (RFC 9460
+  type 65) over DNS over HTTPS, seals the ClientHello with pure-Rust HPKE
+  (RFC 9180), retries once if the server returns retry configs, and falls back
+  to a plain ClientHello when no config is published or the server refuses it.
+* With `strict`, podnet never sends a plain ClientHello; the connection fails
+  when no sealed handshake succeeds.
+* With a base64 `ECHConfigList`, podnet validates the list and caches it for
+  the target hops (`PODNET_ECH_HOPS`, comma list of `api`, `edge`, `masque`,
+  or `all`) and an optional `PODNET_ECH_FRONT` host name.
+* `--ech-grease` (or `PODNET_ECH_GREASE=1`) sends a GREASE ECH extension in
+  TLS 1.3 ClientHellos when no `ECHConfigList` applies.
+* When `--ech` or `--ech-grease` is active, `podnet doctor` probes the `ech=`
+  parameter of each hop's `HTTPS` record and reports `public_name`,
+  `max_name_length`, and whether the inner host name fits.
+
 ## Front doors
 
 A front door is a listener that speaks SOCKS5 and HTTP CONNECT. The listener detects the protocol from the
@@ -20590,8 +21760,14 @@ IPv6 address in `2606:4700:110::/48`).
 * The `PATCH` answer lists the endpoint ports
   `[443, 500, 1701, 4500, 4443, 8443, 8095]` (measured, podssh issue 63).
   podnet uses 443 only (`register::MASQUE_PORT`).
-* The newer L4 proxy mode of the front door is HTTP/3 only (read, podssh
-  issue 63). podnet uses CONNECT-IP over HTTP/2.
+* The L4 proxy mode of the front door (`consumer-masque-proxy.cloudflareclient.com`)
+  is HTTP/3 only (measured against official `cloudflare-warp` 2026.8.2115.0;
+  `docs/reports/warp-client-capture-2026-11-27.md`). Stream 0 sends an extended
+  `CONNECT` (`:protocol cf-connect-ip`, `:scheme http`, `:authority cloudflareaccess.com`,
+  `:path /`, `cf-client-version`); subsequent streams carry plain RFC 9114 `CONNECT`
+  with IP-literal `:authority` and raw TCP payload in `DATA` frames. `podnet warp
+  proxy --l4` speaks this mode directly; `podnet warp` uses CONNECT-IP over HTTP/2
+  or HTTP/3 (`--masque-transport h3`).
 * `smoltcp` owns the tunnel address and runs TCP and UDP on it. This is
   `podnet::warp::WarpStack`.
 

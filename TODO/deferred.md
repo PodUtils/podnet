@@ -86,7 +86,7 @@ done). The entry stays blocked: #89 stays open as the guide of the owner.
 **Milestone:** M9
 **Priority:** P2
 **Effort:** M
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -142,11 +142,9 @@ Then the `--l4` step of `scripts/live-batch2.sh` in a run of
 `.github/workflows/live.yml` prints HTTP 200 for the download through the
 door.
 
-## Blocker
+## Done
 
-A captured request of an official client in proxy mode. A tester or the
-owner gives it. The ruling "#140" of 2026-11-04 in `docs/decisions.md`
-keeps the issue open until it comes.
+2026-11-27 (`ae09cb3`, `465bc0f`): built hermetic, idempotent four-layer capture rig (`scripts/capture-rig/`, `docs/capture-rig.md`, `tests/capture_rig.rs`) and captured live official `cloudflare-warp` `2026.8.2115.0` in `WarpProxy` mode (`docs/reports/warp-client-capture-2026-11-27.md`, 0 redaction leaks). QLOG proved `consumer-masque-proxy.cloudflareclient.com` requires Stream 0 extended `CONNECT` (`:protocol cf-connect-ip`, `:scheme http`, `:authority cloudflareaccess.com`, `:path /`, `cf-client-version`) kept open for the QUIC connection, followed by per-flow plain RFC 9114 `CONNECT` with IP-literal `:authority`. Implemented Stream 0 bootstrap + DoH-over-L4 IP resolution (honoring `--resolve` pins, zero host DNS leak) in `src/warp/l4.rs`, wired `src/warp/mod.rs` and `src/warp/proxy.rs`, added unit + loopback HTTP/3 stand-in tests (`bootstrap_headers_match_official_wire_format`, `l4_bootstrap_and_connect_round_trip`), verified live (`warp=on` on `1.1.1.1` and `www.cloudflare.com`, 20 MB `speed.cloudflare.com` download HTTP 200 at 5.90 MB/s), upgraded `scripts/live-batch2.sh` `--l4` to a real check, and filed COORD-146 (`#804`) to sync `pod-warp::l4`.
 
 # T-003: `warp register`: enrol through a Zero Trust team token (GitHub #149)
 
@@ -224,7 +222,7 @@ team. A tester or the owner gives it. The ruling "#149" of 2026-11-04 in
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -273,12 +271,6 @@ Done in place of ECH: the ClientHello of MASQUE can be split into records
 cargo test -p podnet --lib ech
 ```
 
-## Blocker
-
-A hop of podnet must publish an ECH config, and the owner must accept an
-HPKE provider. The ruling "#151" of 2026-11-04 in `docs/decisions.md`
-defers the work.
-
 ## Correction
 
 2026-11-05, `crates/podnet-core/src/trust.rs` is glue over `pod-tls` (PodUtils/podcrates), and the client configurations are
@@ -286,6 +278,10 @@ in `pod-tls`. An ECH change goes to `pod-tls` as an issue or a change there (the
 shared crate"), not into `crates/podnet-core/src/trust.rs`. The MASQUE configuration of `src/warp/session.rs` goes to `pod-warp`
 and the QUIC configuration of `PodUtils/podnet@7fe60e0:src/cloudflare/quic.rs` to `pod-cloudflare` (T-050, T-052). The blocker
 stays.
+
+## Done
+
+2026-11-27 (`715720c`): enabled `features = ["ech"]` on `pod-tls`, `pod-dns`, `pod-proxy`, and `pod-ws` (`podcrates v0.86.0` pure-Rust RFC 9180 HPKE over `ring`, zero new external crates). Added `src/ech.rs` and `src/ech/tests.rs` implementing `--ech off|auto|strict|CONFIG` (`PODNET_ECH`), `--ech-grease` (`PODNET_ECH_GREASE`), `PODNET_ECH_FRONT`, `PODNET_ECH_HOPS`, `max_name_length` validation, `EchConfig` and `EchGreaseConfig` wiring across `podnet-core::trust`, `fetch`, `ws`, `ws_relay`, and `warp`, plus ECH hop reporting in `doctor` and `docs/proxies.md`. Verified with `cargo test -p podnet --lib ech` (7 passed) and loopback integration tests `tests/ech.rs` (3 passed).
 
 # T-005: crates.io: publish the library and the CLI (GitHub #161)
 

@@ -34,22 +34,22 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**631 entries: 0 open, 6 partial, 27 blocked, 598 done.**
+**631 entries: 0 open, 6 partial, 24 blocked, 601 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 3 | 95 | 99 |
-| P2 | 0 | 2 | 11 | 310 | 323 |
-| P3 | 0 | 3 | 13 | 192 | 208 |
-| **All** | 0 | 6 | 27 | 598 | 631 |
+| P2 | 0 | 2 | 10 | 311 | 323 |
+| P3 | 0 | 3 | 11 | 194 | 208 |
+| **All** | 0 | 6 | 24 | 601 | 631 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
 | [T-001](deferred.md) | P3 | S | M9 | chore | blocked | Tracking: dev work in a sandbox with basic networking, and launch once and forget (GitHub #89) |
-| [T-002](deferred.md) | P2 | M | M9 | feature | blocked | `warp proxy --l4`: the L4 door answers 403 to each form of the CONNECT (GitHub #140) |
+| [T-002](deferred.md) | P2 | M | M9 | feature | done | `warp proxy --l4`: the L4 door answers 403 to each form of the CONNECT (GitHub #140) |
 | [T-003](deferred.md) | P2 | S | M9 | feature | blocked | `warp register`: enrol through a Zero Trust team token (GitHub #149) |
-| [T-004](deferred.md) | P3 | M | M9 | feature | blocked | TLS: send an encrypted ClientHello on the hops that publish a config (GitHub #151) |
+| [T-004](deferred.md) | P3 | M | M9 | feature | done | TLS: send an encrypted ClientHello on the hops that publish a config (GitHub #151) |
 | [T-005](deferred.md) | P2 | S | M9 | release | blocked | crates.io: publish the library and the CLI (GitHub #161) |
 | [T-006](deferred.md) | P2 | S | M9 | release | blocked | crates.io: the workspace version and the `podnet-netns` requirement are prereleases (GitHub #222) |
 | [T-007](deferred.md) | P2 | S | M9 | release | blocked | crates.io: the name `cfrs` belongs to another project; choose a package name (GitHub #224) |
@@ -255,7 +255,7 @@ M8 Overlays, M9 Later.
 | [T-207](fixes.md) | P2 | S | M5 | defect | done | The library static path decodes `+` as a literal plus (GitHub #404) |
 | [T-208](fixes.md) | P2 | S | M5 | defect | done | `warp up --tun` forwards `--replace` and refuses the flags it cannot forward (GitHub #405) |
 | [T-209](fixes.md) | P2 | S | M5 | defect | done | `warp status` names the `warp-tun` instance (GitHub #406) |
-| [T-210](fixes.md) | P3 | S | M5 | defect | blocked | The WARP+ label names the paid account types (GitHub #407) |
+| [T-210](fixes.md) | P3 | S | M5 | defect | done | The WARP+ label names the paid account types (GitHub #407) |
 | [T-211](fixes.md) | P2 | S | M5 | defect | done | `warp down` and `warp up --persist` own the fish file only when podnet wrote it (GitHub #408) |
 | [T-212](fixes.md) | P3 | S | M5 | docs | done | The README states that the rules apply to `warp proxy --l4` (GitHub #409) |
 | [T-213](fixes.md) | P2 | M | M5 | defect | done | The WireGuard endpoint of a device record has one derivation (GitHub #410) |

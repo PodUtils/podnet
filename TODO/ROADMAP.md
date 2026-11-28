@@ -52,5 +52,5 @@ The overlay networks (Tailscale and others) as adapters.
 Deferred work. Each entry waits for the owner or for a condition outside
 the repository.
 
-- T-001, T-002, T-003, T-004, T-005, T-006, T-007: the deferred GitHub
+- T-001, T-003, T-005, T-006, T-007: the deferred GitHub
   issues (`docs/decisions.md`, "Deferred issues").

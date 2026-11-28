@@ -7,9 +7,9 @@
 # scripts/check-github-numbers.py holds this list to GitHub
 # (.github/workflows/record-issues.yml, each day).
 89 issue open
-140 issue open
+140 issue closed
 149 issue open
-151 issue open
+151 issue closed
 161 issue open
 222 issue open
 224 issue closed
@@ -109,7 +109,7 @@
 404 issue closed
 405 issue closed
 406 issue closed
-407 issue open
+407 issue closed
 408 issue closed
 409 issue closed
 410 issue closed
@@ -502,3 +502,4 @@
 801 issue open
 802 issue open
 803 issue open
+804 issue open

@@ -3324,7 +3324,7 @@ status` keeps its text (not part of this fix). `sh scripts/agent/check.sh`: exit
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -3352,15 +3352,13 @@ another type is shown as WARP+.
 `cargo test -p podnet --lib warp_plus_label` (new cases from the measured values).
 `podnet warp status --json | jq '.account_type, .premium_data, .warp_plus_active'` on a live device (the measurement).
 
-## Blocker
-
-The owner, 2026-11-11 (`docs/decisions.md`, Deferred and blocked work): the measure needs a device with a paid licence
-(one `podnet warp status --json` of a free device and one of a licensed device). A mock cannot give the
-`account_type` values of the live service.
-
 ## Correction
 
 2026-11-09: the measurement of Approach 1 is not possible in this session. No record of the `account_type` values of the live service exists in the tree: `grep -rn account_type docs tests src` finds the report line `docs/reports/aerrand-agent.md:639` (type `free` with `warp_plus` true), the fixtures src/warp/register.rs:627 at `9c1fc4b` and `src/cli/cmd/warp/cli_tests.rs:130` (`limited`, made up), and no list of the paid types. A registration spends a device and needs the live service (`docs/decisions.md`, WARP devices). The code stays as it is. Start condition: one `podnet warp status --json` of a free device and one of a device with a licence, recorded in `docs/reports/`.
+
+## Done
+
+2026-11-27 (`465bc0f`): captured official `cloudflare-warp` `2026.8.2115.0` live anonymous registration (`account_type: "free"`, `Account type: Free`) and extracted its closed four-variant `warp_primitives::warp_account::WarpAccount` enum (`free`, `limited` with `premium_data`/`quota`, `unlimited` with `plus_expires_at`, `team` with `managed`/`organization`) in `docs/reports/warp-client-capture-2026-11-27.md`. Updated `podnet::warp::identity::warp_plus_label` (`src/warp/identity.rs`) to accept only the closed paid types (`unlimited`, `team`, `premium`) plus `premium_data > 0`, logging a debug disagreement when a paid type has `warp_plus: false`, and failing closed to `"no"` for `free`, `limited` without `premium_data`, empty, and unknown types. Added unit tests in `src/warp/identity.rs` (`warp_plus_label_names_the_paid_account_types`) and `src/cli/cmd/warp/cli_tests.rs` (`warp_license_and_status_fields`), and filed COORD-146 (`#804`) to sync `pod-warp::identity::warp_plus_label`.
 
 # T-211: `warp down` and `warp up --persist` own the fish file only when podnet wrote it (GitHub #408)
 
