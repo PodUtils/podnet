@@ -5,7 +5,7 @@
 //! `pod-ws`. ECH is off by default so wire bytes stay unchanged until enabled
 //! with `--ech` or `PODNET_ECH`.
 
-use std::sync::{Arc, OnceLock, PoisonError, RwLock};
+use std::sync::{OnceLock, PoisonError, RwLock};
 use std::time::Duration;
 
 use anyhow::{bail, Context as _, Result};
@@ -456,17 +456,10 @@ fn client_config_with_ech(
     let ctx = crate::trust::context();
     let store = ctx.roots()?.with_extra(extra)?;
     let provider = ctx.provider().clone();
-    let verifier = rustls::client::WebPkiServerVerifier::builder_with_provider(
-        Arc::new(store),
-        provider.clone(),
-    )
-    .build()
-    .map_err(|e| anyhow::anyhow!("server certificate verifier: {e}"))?;
     let mut config = rustls::ClientConfig::builder_with_provider(provider)
         .with_ech(mode)
         .map_err(|e| anyhow::anyhow!("building ECH client config: {e}"))?
-        .dangerous()
-        .with_custom_certificate_verifier(verifier)
+        .with_root_certificates(store)
         .with_no_client_auth();
     config.alpn_protocols = alpn.iter().map(|p| p.to_vec()).collect();
     Ok(config)
