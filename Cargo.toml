@@ -227,7 +227,7 @@ httparse = "1"
 http = "1"
 http-body-util = "0.1"
 libc = "0.2"
-qrcode = { version = "0.14", default-features = false }
+qrcode = { version = "0.15", default-features = false }
 # The QUIC stack of pod-quic (podcrates call C43): no default feature, so no
 # ring and no aws-lc in it; its keys are pod-quic's.
 noq = { version = "1.4", default-features = false, features = ["runtime-tokio", "rustls", "qlog"] }
