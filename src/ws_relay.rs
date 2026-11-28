@@ -93,7 +93,8 @@ fn context_in(cache: Cache) -> Context {
         crate::trust::context().clone(),
         crate::egress::egress(None),
         format!("podnet/{}", env!("CARGO_PKG_VERSION")),
-    );
+    )
+    .with_records(crate::egress::resolver());
     Context::new(way, cache)
         .with_settings(settings(None))
         .with_proxy_of(Arc::new(|host| crate::egress::proxy_for(host, 443)))
@@ -295,7 +296,7 @@ impl Relay {
         let path = pod_relay::relay::forward_path(&target.ip().to_string(), target.port())
             .map_err(|e| anyhow::anyhow!(e))?;
         let shown = target.to_string();
-        let trust = crate::trust::ws_trust();
+        let trust = crate::trust::ech_trust();
         let request = pod_relay::Request {
             ctx: &self.ctx,
             relays: &self.list,

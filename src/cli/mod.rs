@@ -88,6 +88,20 @@ pub(crate) struct Cli {
     /// adds to it. TLS still checks the name of the certificate.
     #[arg(long, global = true, value_name = "HOST=IP")]
     pub(crate) resolve: Option<String>,
+    /// TLS Encrypted ClientHello (ECH): off (default), auto, on, strict, or a
+    /// base64 ECHConfigList. PODNET_ECH sets the same value.
+    #[arg(
+        long,
+        global = true,
+        value_name = "VALUE",
+        env = "PODNET_ECH",
+        hide_env_values = true
+    )]
+    pub(crate) ech: Option<String>,
+    /// Send a GREASE ECH extension in TLS 1.3 ClientHellos when no
+    /// ECHConfigList applies. PODNET_ECH_GREASE sets the same flag.
+    #[arg(long, global = true, env = "PODNET_ECH_GREASE", hide_env_values = true)]
+    pub(crate) ech_grease: bool,
     /// Log warnings and errors only.
     #[arg(short, long, global = true, conflicts_with = "verbose")]
     pub(crate) quiet: bool,

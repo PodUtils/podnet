@@ -47,7 +47,7 @@ LAYER = {
     "exit": "core", "hop": "core", "state": "core", "report": "core",
     "decisions": "core", "metrics": "core", "rlimit": "core", "self_exe": "core", "yaml": "core",
     "race": "core", "util": "core", "qr": "core", "ports": "core",
-    "net": "core", "trust": "core", "egress": "core", "resolve": "core",
+    "net": "core", "trust": "core", "ech": "core", "egress": "core", "resolve": "core",
     "fetch": "core", "udp": "core", "connect": "core", "detach": "core",
     "instances": "core", "autostart": "core",
     "vnet": "vnet",

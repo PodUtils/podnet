@@ -88,6 +88,7 @@ pub mod dialers;
 pub mod doctor;
 pub mod doctor_shape;
 pub mod e2e;
+pub mod ech;
 pub mod edge_discovery;
 pub mod edge_h2;
 pub mod egress;

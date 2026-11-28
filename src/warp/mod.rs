@@ -220,11 +220,10 @@ fn api_or_default(proxy: Option<&Proxy>) -> pod_warp::Api {
 
 /// The API of WARP at the default bases, through `proxy`.
 fn api_client(proxy: Option<&Proxy>) -> pod_warp::Api {
-    let client = pod_proxy::Client::new(
-        crate::trust::context().clone(),
-        crate::egress::egress(proxy.cloned()),
-    )
-    .with_user_agent(format!("podnet/{}", env!("CARGO_PKG_VERSION")));
+    let dial = crate::egress::egress(proxy.cloned());
+    let client = pod_proxy::Client::new(crate::trust::context().clone(), dial)
+        .with_user_agent(format!("podnet/{}", env!("CARGO_PKG_VERSION")))
+        .with_records(crate::egress::resolver());
     pod_warp::Api::new(client)
 }
 

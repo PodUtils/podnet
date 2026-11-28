@@ -9,7 +9,7 @@ fn ms(d: Option<Duration>) -> Option<f64> {
 
 impl Report {
     pub fn to_json(&self) -> Value {
-        crate::status::stamped(json!({
+        let mut doc = json!({
             "ok": self.ok(),
             "quick": self.quick,
             "lanes": self.lanes_json(),
@@ -80,7 +80,11 @@ impl Report {
                 "status": l.verdict.name(),
                 "reason": l.reason,
             })).collect::<Vec<_>>(),
-        }))
+        });
+        if let Some(ech) = &self.ech {
+            doc["ech"] = ech.to_json();
+        }
+        crate::status::stamped(doc)
     }
 
     /// The `lanes` object: the seven egress lanes of [`lanes`].

@@ -32,6 +32,7 @@ fn client() -> &'static pod_proxy::Client {
     CLIENT.get_or_init(|| {
         pod_proxy::Client::new(crate::trust::context().clone(), crate::egress::egress(None))
             .with_user_agent(format!("podnet/{}", env!("CARGO_PKG_VERSION")))
+            .with_records(crate::egress::resolver())
     })
 }
 
@@ -39,6 +40,12 @@ fn client() -> &'static pod_proxy::Client {
 pub async fn send(mut request: Request) -> Result<Response> {
     let what = format!("{} {}", request.method, without_query(&request.url));
     let timeout = request.timeout;
+    if request.url.starts_with("https://")
+        && request.trust.is_none()
+        && crate::trust::context().ech().mode() != pod_tls::ech::Mode::Off
+    {
+        request.trust = Some(pod_tls::Trust::Default);
+    }
     let watch = request.url.starts_with("https://").then(|| {
         let connected = Arc::new(AtomicBool::new(false));
         let spoke = Arc::new(AtomicBool::new(false));

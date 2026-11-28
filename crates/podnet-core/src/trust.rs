@@ -83,6 +83,7 @@ fn words_of(
     beside: Option<&std::path::Path>,
 ) -> (Words, Option<String>) {
     let mut words = Words::new("podnet");
+    words.ech_strict = "--ech strict or PODNET_ECH=strict".into();
     match replacing {
         None => {
             words.replace_roots = format!("--ca-file FILE or {CA_FILE_VARIABLE}");
@@ -121,6 +122,19 @@ pub fn ws_trust() -> pod_tls::Trust {
             trust_of(context().client_config_with(&[], &[]), ca_file)
         })
         .clone()
+}
+
+/// The trust for connections that support ECH (`pod-ws`, `pod-proxy`): when
+/// ECH is active on [`context`], returns [`pod_tls::Trust::Default`] so
+/// `pod-tls` builds a sealed TLS 1.3 configuration over the context's roots
+/// (including `--ca-file` / `SSL_CERT_FILE`); when ECH is off, returns
+/// [`ws_trust`] so the existing wire behavior stays unchanged.
+pub fn ech_trust() -> pod_tls::Trust {
+    if context().ech().mode() != pod_tls::ech::Mode::Off {
+        pod_tls::Trust::Default
+    } else {
+        ws_trust()
+    }
 }
 
 /// The trust over the configuration of the context. When the roots of the

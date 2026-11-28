@@ -80,6 +80,28 @@ read (for example `/etc/ssl/certs/ca-certificates.crt`), and the Mozilla
 roots compiled into podnet. `podnet status` shows the roots in `tls_roots`. See
 `SECURITY.md`.
 
+## Encrypted ClientHello (ECH)
+
+TLS Encrypted ClientHello (RFC 9849) is off by default, so wire bytes stay
+unchanged until you turn it on.
+
+* `--ech VALUE` (or `PODNET_ECH`) sets the ECH mode: `off` (default), `auto`
+  or `on`, `strict`, or a base64 `ECHConfigList`.
+* With `auto` or `on`, podnet reads the target's `HTTPS` DNS record (RFC 9460
+  type 65) over DNS over HTTPS, seals the ClientHello with pure-Rust HPKE
+  (RFC 9180), retries once if the server returns retry configs, and falls back
+  to a plain ClientHello when no config is published or the server refuses it.
+* With `strict`, podnet never sends a plain ClientHello; the connection fails
+  when no sealed handshake succeeds.
+* With a base64 `ECHConfigList`, podnet validates the list and caches it for
+  the target hops (`PODNET_ECH_HOPS`, comma list of `api`, `edge`, `masque`,
+  or `all`) and an optional `PODNET_ECH_FRONT` host name.
+* `--ech-grease` (or `PODNET_ECH_GREASE=1`) sends a GREASE ECH extension in
+  TLS 1.3 ClientHellos when no `ECHConfigList` applies.
+* When `--ech` or `--ech-grease` is active, `podnet doctor` probes the `ech=`
+  parameter of each hop's `HTTPS` record and reports `public_name`,
+  `max_name_length`, and whether the inner host name fits.
+
 ## Front doors
 
 A front door is a listener that speaks SOCKS5 and HTTP CONNECT. The listener detects the protocol from the

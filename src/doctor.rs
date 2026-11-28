@@ -231,6 +231,8 @@ pub struct Report {
     pub nat: Nat,
     /// derper's probe of the DERP servers (T-128).
     pub derp: Derp,
+    /// TLS ECH probe row when `--ech` or `--ech-grease` is active.
+    pub ech: Option<crate::ech::DoctorRow>,
 }
 
 /// The clock of this host against the `Date` header of an answer.
@@ -360,7 +362,13 @@ impl Report {
         out.push_str(&self.ssh_relay.line());
         out.push_str(&self.carriers.text());
         out.push_str(&crate::warp::h3::doctor_lines().join("\n"));
-        out.push_str("\n\nroads\n");
+        let ech_line = self
+            .ech
+            .as_ref()
+            .map_or_else(crate::ech::DoctorRow::off_line, |e| {
+                e.text().trim_end().into()
+            });
+        out.push_str(&format!("\n{ech_line}\n\nroads\n"));
         for (road, verdict, reason) in self.roads() {
             out.push_str(&format!("  {road:<10} {:<8} {reason}\n", verdict.name()));
         }
@@ -465,8 +473,10 @@ pub async fn run(options: Options) -> Report {
     let derp = derp
         .await
         .unwrap_or_else(|e| Derp::unknown(format!("the probe did not run: {e}")));
+    let ech = crate::ech::doctor_probe_if_active(options.timeout, end, LATE).await;
     Report {
         derp,
+        ech,
         proxy,
         paths,
         udp: (udp_target, udp),

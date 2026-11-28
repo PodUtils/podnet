@@ -198,6 +198,8 @@ fn merge(outer: crate::cli::Cli, inner: crate::cli::Cli) -> crate::cli::Cli {
             inner.egress
         },
         resolve: inner.resolve.or(outer.resolve),
+        ech: inner.ech.or(outer.ech),
+        ech_grease: inner.ech_grease || outer.ech_grease,
         quiet: inner.quiet || outer.quiet,
         verbose: inner.verbose.max(outer.verbose),
         color: pick(inner.color, outer.color, "auto"),

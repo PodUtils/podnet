@@ -44,6 +44,7 @@ pub fn way() -> pod_ws::Way {
         crate::egress::egress(None),
         format!("podnet/{}", env!("CARGO_PKG_VERSION")),
     )
+    .with_records(crate::egress::resolver())
 }
 
 /// The time for each step (TCP, TLS, the upgrade) of a client WebSocket.
@@ -60,7 +61,7 @@ pub async fn dial(
     timeout: std::time::Duration,
     authorization: Option<&str>,
 ) -> Result<Session> {
-    let trust = crate::trust::ws_trust();
+    let trust = crate::trust::ech_trust();
     pod_ws::bridge::dial(url, &way(), &trust, timeout, authorization)
         .await
         .map_err(|err| failed(url, err))
@@ -152,7 +153,7 @@ async fn dial_again(url: &str, authorization: Option<&str>) -> Result<Session> {
         let err = match pod_ws::bridge::dial(
             url,
             &way(),
-            &crate::trust::ws_trust(),
+            &crate::trust::ech_trust(),
             DIAL_TIMEOUT,
             authorization,
         )

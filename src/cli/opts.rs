@@ -309,10 +309,11 @@ pub(crate) fn variable_checks() -> Result<()> {
             .context(podnet::resolve::PINS_VARIABLE)
             .fault(Fault::Config)?;
     }
+    podnet::ech::validate_env().fault(Fault::Config)?;
     Ok(())
 }
 
-/// Apply --proxy, --no-proxy and --resolve.
+/// Apply --proxy, --no-proxy, --resolve, --ech and --ech-grease.
 pub(crate) fn network_options(cli: &Cli) -> Result<()> {
     use podnet::egress::Proxy;
     // T-060: main rewrites each --egress into its old flag before the parse.
@@ -326,9 +327,12 @@ pub(crate) fn network_options(cli: &Cli) -> Result<()> {
     // The pins first: the first dialer, of --proxy or --no-proxy, takes them.
     if let Some(list) = &cli.resolve {
         podnet::resolve::set_pins(list).context("--resolve")?;
-    } else {
-        variable_checks()?;
+    } else if let Ok(list) = std::env::var(podnet::resolve::PINS_VARIABLE) {
+        podnet::resolve::parse_pins(&list)
+            .context(podnet::resolve::PINS_VARIABLE)
+            .fault(Fault::Config)?;
     }
+    podnet::ech::configure_cli(cli.ech.as_deref(), cli.ech_grease)?;
     if let Some(spec) = &cli.proxy {
         // Issue 95: a value with no scheme (PODNET_PROXY=notaurl) became
         // http://notaurl:8080, and each leg then failed on a name. The
