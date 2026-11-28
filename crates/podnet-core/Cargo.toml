@@ -36,7 +36,7 @@ anyhow = "1"
 futures = "0.3"
 getrandom = "0.4"
 libc = "0.2"
-qrcode = { version = "0.14", default-features = false }
+qrcode = { version = "0.15", default-features = false }
 ring = "0.17"
 rustls = { version = "0.23", default-features = false, features = [
     "ring",
