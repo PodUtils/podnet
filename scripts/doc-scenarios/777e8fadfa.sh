@@ -10,7 +10,7 @@ setup() {
 }
 
 check() {
-    echo "d2c76a3bd4fbd32b209d4f29bbf76dcb80b4c7d25ae8ef1a8b5130e0364c498a  ${TMPDIR:-/tmp}/tuic-server-v2" |
+    echo "b608276df5ae2c662b8d264184563b252d50684389833607b2bd02249ffa3b04  ${TMPDIR:-/tmp}/tuic-server-v2" |
         sha256sum -c -
     test -x "${TMPDIR:-/tmp}/tuic-server-v2"
 }

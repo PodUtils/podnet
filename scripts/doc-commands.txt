@@ -174,7 +174,7 @@ docs/quic.md bcf92a4f48 skip a cargo test in the repository, not a temporary dir
 docs/quic.md b171bd8e21 live-manual a TUIC server; UUID, PASSWORD, HOST and PORT are placeholders
 docs/quic.md 3354bcd999 skip a cargo test in the repository, not a temporary directory
 docs/quic.md 8d07bd3227 skip a cargo test in the repository, not a temporary directory
-docs/quic.md a30fa202c0 live [needs curl] downloads the TUIC server; the check compares its SHA-256 with the pin of the document
+docs/quic.md 777e8fadfa live [needs curl] downloads the TUIC server; the check compares its SHA-256 with the pin of the document
 docs/quic.md dcf8f69035 live the server of the block above: the set-up downloads it and checks its SHA-256
 docs/quic.md 6b73d22e33 skip a cargo test; the server is downloaded above
 docs/quic.md 5659bf5812 skip a cargo test; /path is a placeholder

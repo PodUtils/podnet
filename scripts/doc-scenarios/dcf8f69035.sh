@@ -7,9 +7,9 @@
 LIMIT=60
 
 setup() {
-    curl -sSL -o "${TMPDIR:-/tmp}/tuic-server-v2" \
-        "https://github.com/Itsusinn/tuic/releases/download/v2.0.0-dev10/tuic-server-x86_64-linux-musl"
-    echo "d2c76a3bd4fbd32b209d4f29bbf76dcb80b4c7d25ae8ef1a8b5130e0364c498a  ${TMPDIR:-/tmp}/tuic-server-v2" |
+    curl -fsSL -o "${TMPDIR:-/tmp}/tuic-server-v2" \
+        "https://github.com/Itsusinn/tuic/releases/download/v1.5.2/tuic-server-x86_64-linux-musl"
+    echo "b608276df5ae2c662b8d264184563b252d50684389833607b2bd02249ffa3b04  ${TMPDIR:-/tmp}/tuic-server-v2" |
         sha256sum -c -
     chmod +x "${TMPDIR:-/tmp}/tuic-server-v2"
 }

@@ -546,7 +546,7 @@ against the binary and against this file. The test `the_ready_keys_are_fixed`
 ### Flags of `podnet tunnel`
 
 `--auth-password-file`, `--auth-user`, `--ca-file`, `--check`, `--color`,
-`--config`, `--credentials-file`, `--detach`, `--egress`, `--forward`,
+`--config`, `--credentials-file`, `--detach`, `--ech`, `--ech-grease`, `--egress`, `--forward`,
 `--ha-connections`, `--hello-world`, `--help`, `--http-host-header`, `--json`,
 `--leg-failover`, `--log-format`, `--masque-endpoint`, `--name`, `--no-proxy`,
 `--no-restart`, `--no-tls-verify`, `--no-verify`, `--port`, `--protocol`, `--proxy`, `--qr`,

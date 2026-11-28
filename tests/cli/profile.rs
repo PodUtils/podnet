@@ -70,6 +70,8 @@ fn connector_profile_is_pinned() {
         "--e2e-inspect",
         "--e2e-token",
         "--e2e-token-seed-file",
+        "--ech",
+        "--ech-grease",
         "--egress",
         "--forward",
         "--ha-connections",

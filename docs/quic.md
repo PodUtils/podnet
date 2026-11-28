@@ -162,28 +162,28 @@ different transports for `nc`, so the command line takes one of them.
 
 ### The reference server
 
-The reference server is `tuic-server` 2.0.0-dev10 of `tuic-protocol/tuic` (formerly `EAimTY/tuic`). The release asset
-`tuic-server-x86_64-linux-musl` was fetched through the operator's proxy:
+The reference server is `tuic-server` `1.5.2` of `Itsusinn/tuic` (stable release, replacing the removed
+`v2.0.0-dev10` prerelease). The release asset `tuic-server-x86_64-linux-musl` is fetched and verified by SHA-256:
 
 ```sh
-curl -sSL -o "${TMPDIR:-/tmp}/tuic-server-v2" \
-  "https://github.com/Itsusinn/tuic/releases/download/v2.0.0-dev10/tuic-server-x86_64-linux-musl"
+curl -fsSL -o "${TMPDIR:-/tmp}/tuic-server-v2" \
+  "https://github.com/Itsusinn/tuic/releases/download/v1.5.2/tuic-server-x86_64-linux-musl"
 sha256sum "${TMPDIR:-/tmp}/tuic-server-v2"
 chmod +x "${TMPDIR:-/tmp}/tuic-server-v2"
 ```
 
 ```text
-d2c76a3bd4fbd32b209d4f29bbf76dcb80b4c7d25ae8ef1a8b5130e0364c498a  tuic-server-v2
+b608276df5ae2c662b8d264184563b252d50684389833607b2bd02249ffa3b04  tuic-server-v2
 ```
 
-The hash is the pin in podssh's own `.github/workflows/tuic-interop.yml`. The binary says:
+The binary says:
 
 ```sh
 "${TMPDIR:-/tmp}/tuic-server-v2" --version
 ```
 
 ```text
-tuic-server 2.0.0-dev10
+1.5.2
 ```
 
 The test writes a self-signed certificate and this configuration, starts the binary with `-c`, and waits for its
